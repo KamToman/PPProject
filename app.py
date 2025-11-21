@@ -83,7 +83,18 @@ def login():
             session['username'] = user.username
             session['role'] = user.role
             flash(f'Witaj, {user.full_name}!', 'success')
-            return redirect(url_for('index'))
+            
+            # Redirect to user's designated panel based on role
+            if user.role == 'admin':
+                return redirect(url_for('admin_panel'))
+            elif user.role == 'designer':
+                return redirect(url_for('designer_panel'))
+            elif user.role == 'worker':
+                return redirect(url_for('worker_panel'))
+            elif user.role == 'manager':
+                return redirect(url_for('manager_panel'))
+            else:
+                return redirect(url_for('index'))
         else:
             flash('Nieprawidłowa nazwa użytkownika lub hasło.', 'error')
     

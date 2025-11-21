@@ -223,14 +223,6 @@ function startQRScanner() {
     });
 }
 
-// Auto-start scanner when page loads
-window.addEventListener('load', () => {
-    // Wait a bit for the library to load
-    setTimeout(() => {
-        startQRScanner();
-    }, 500);
-});
-
 function stopQRScanner() {
     if (!isScanning || !html5QrcodeScanner) return;
     
@@ -255,6 +247,23 @@ function resetScannerUI() {
     isScanning = false;
     document.getElementById('qrReader').style.display = 'block';
     document.getElementById('stopScanBtn').style.display = 'none';
+}
+
+// Auto-start scanner after library loads
+function initScanner() {
+    if (typeof Html5Qrcode !== 'undefined') {
+        startQRScanner();
+    } else {
+        // Retry after a short delay if library not loaded yet
+        setTimeout(initScanner, 100);
+    }
+}
+
+// Start when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initScanner);
+} else {
+    initScanner();
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
