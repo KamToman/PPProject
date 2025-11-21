@@ -111,7 +111,11 @@ Domyślne etapy:
 5. Kliknij "Start pracy" aby rozpocząć
 6. Kliknij "Stop pracy" aby zakończyć pracę na tym zleceniu
 
-**Uwaga**: Skanowanie kamerą wymaga przeglądarki z obsługą dostępu do kamery (HTTPS w produkcji lub localhost w rozwoju)
+**Uwagi dotyczące skanowania kamerą**:
+- Wymaga przeglądarki z obsługą dostępu do kamery (HTTPS w produkcji lub localhost w rozwoju)
+- Wymaga połączenia z internetem do załadowania biblioteki skanowania (cdn.jsdelivr.net)
+- Jeśli biblioteka się nie załaduje, użyj ręcznego wprowadzania kodów QR
+- Możliwe przyczyny błędu ładowania: firewall, blokada reklam, brak internetu
 
 ### Przeglądanie raportów (Kierownik)
 1. Przejdź do Panelu Kierownika

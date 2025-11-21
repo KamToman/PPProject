@@ -198,7 +198,7 @@ function startQRScanner() {
     
     // Check if Html5Qrcode library is loaded
     if (typeof Html5Qrcode === 'undefined') {
-        showMessage('Biblioteka skanowania nie została załadowana. Odśwież stronę.', 'error');
+        showMessage('Biblioteka skanowania nie została załadowana. Sprawdź połączenie internetowe i odśwież stronę. Jeśli problem się powtarza, użyj ręcznego wprowadzania kodu QR.', 'error');
         return;
     }
     
@@ -261,7 +261,5 @@ function resetScannerUI() {
     document.getElementById('stopScanBtn').style.display = 'none';
 }
 </script>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" 
-        integrity="sha384-rbm7Rs/x1qVXKnKjLvMPXRJJPXXTLr0F5qK5vWPVcFP0dPvV7bZCqYxVVJKfKKYC" 
-        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 {% endblock %}
