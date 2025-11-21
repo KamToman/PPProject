@@ -229,7 +229,7 @@ function startQRScanner() {
         document.getElementById('scanBtn').style.display = 'none';
         document.getElementById('stopScanBtn').style.display = 'inline-block';
     }).catch((err) => {
-        showMessage('Błąd uruchamiania kamery: ' + err, 'error');
+        showMessage('Błąd uruchamiania kamery: ' + (err.message || err), 'error');
         qrReaderDiv.style.display = 'none';
     });
 }
@@ -248,7 +248,11 @@ function stopQRScanner() {
 
 function resetScannerUI() {
     if (html5QrcodeScanner) {
-        html5QrcodeScanner.clear();
+        try {
+            html5QrcodeScanner.clear();
+        } catch (err) {
+            console.error('Error clearing scanner:', err);
+        }
         html5QrcodeScanner = null;
     }
     isScanning = false;
@@ -257,5 +261,7 @@ function resetScannerUI() {
     document.getElementById('stopScanBtn').style.display = 'none';
 }
 </script>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" 
+        integrity="sha384-rbm7Rs/x1qVXKnKjLvMPXRJJPXXTLr0F5qK5vWPVcFP0dPvV7bZCqYxVVJKfKKYC" 
+        crossorigin="anonymous"></script>
 {% endblock %}
