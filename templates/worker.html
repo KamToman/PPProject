@@ -49,22 +49,45 @@ let checkInterval = null;
 let html5QrcodeScanner = null;
 let isScanning = false;
 
-document.getElementById('workerName').addEventListener('input', (e) => {
-    currentWorkerName = e.target.value;
-    if (currentWorkerName) {
-        loadActiveSessions();
-        if (!checkInterval) {
-            checkInterval = setInterval(loadActiveSessions, 30000); // Check every 30 seconds
-        }
-    } else {
-        if (checkInterval) {
-            clearInterval(checkInterval);
-            checkInterval = null;
-        }
-        document.getElementById('activeSessions').innerHTML = 
-            '<p class="text-muted">Wprowadź swoje imię i nazwisko aby zobaczyć aktywne sesje</p>';
+function setupEventListeners() {
+    const workerNameEl = document.getElementById('workerName');
+    if (workerNameEl) {
+        workerNameEl.addEventListener('input', (e) => {
+            currentWorkerName = e.target.value;
+            if (currentWorkerName) {
+                loadActiveSessions();
+                if (!checkInterval) {
+                    checkInterval = setInterval(loadActiveSessions, 30000); // Check every 30 seconds
+                }
+            } else {
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                    checkInterval = null;
+                }
+                document.getElementById('activeSessions').innerHTML = 
+                    '<p class="text-muted">Wprowadź swoje imię i nazwisko aby zobaczyć aktywne sesje</p>';
+            }
+        });
     }
-});
+    
+    // Allow Enter key on QR input for quick scanning
+    const qrInputEl = document.getElementById('qrInput');
+    if (qrInputEl) {
+        qrInputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('startBtn').click();
+            }
+        });
+    }
+    
+    // Camera QR scanning functionality
+    const stopScanBtnEl = document.getElementById('stopScanBtn');
+    if (stopScanBtnEl) {
+        stopScanBtnEl.addEventListener('click', () => {
+            stopQRScanner();
+        });
+    }
+}
 
 async function processQRScan(qrData) {
     const workerName = document.getElementById('workerName').value;
@@ -173,18 +196,6 @@ function showMessage(msg, type) {
     }, 5000);
 }
 
-// Allow Enter key on QR input for quick scanning
-document.getElementById('qrInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        document.getElementById('startBtn').click();
-    }
-});
-
-// Camera QR scanning functionality
-document.getElementById('stopScanBtn').addEventListener('click', () => {
-    stopQRScanner();
-});
-
 function startQRScanner() {
     if (isScanning) return;
     
@@ -259,11 +270,17 @@ function initScanner() {
     }
 }
 
+// Initialize everything when DOM is ready
+function initializePage() {
+    setupEventListeners();
+    initScanner();
+}
+
 // Start when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initScanner);
+    document.addEventListener('DOMContentLoaded', initializePage);
 } else {
-    initScanner();
+    initializePage();
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
