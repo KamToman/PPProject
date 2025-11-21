@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Projektanta{% endblock %}
+
+{% block content %}
+<h1>Panel Projektanta</h1>
+
+<div class="card">
+    <h2>Utwórz nowe zlecenie</h2>
+    <form id="orderForm">
+        <div class="form-group">
+            <label for="orderNumber">Numer zlecenia:</label>
+            <input type="text" id="orderNumber" name="orderNumber" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Opis:</label>
+            <textarea id="description" name="description" rows="3"></textarea>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Utwórz zlecenie</button>
+    </form>
+    
+    <div id="message" class="message"></div>
+</div>
+
+<div class="card">
+    <h2>Lista zleceń</h2>
+    <div id="ordersList">
+        {% if orders %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Numer zlecenia</th>
+                    <th>Opis</th>
+                    <th>Data utworzenia</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>{{ order.order_number }}</td>
+                    <td>{{ order.description }}</td>
+                    <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <a href="{{ url_for('generate_qr_code', order_id=order.id) }}" 
+                           class="btn btn-small" download>Pobierz kod QR</a>
+                        <button class="btn btn-small" onclick="showQR({{ order.id }}, '{{ order.order_number }}')">
+                            Pokaż kod QR
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">Brak zleceń. Utwórz pierwsze zlecenie powyżej.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div id="qrModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2>Kod QR dla zlecenia: <span id="modalOrderNumber"></span></h2>
+        <div id="qrCodeContainer"></div>
+        <p class="text-muted">Kliknij prawym przyciskiem myszy i wybierz "Zapisz obraz jako..." aby zapisać kod QR</p>
+    </div>
+</div>
+
+<script>
+document.getElementById('orderForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const orderNumber = document.getElementById('orderNumber').value;
+    const description = document.getElementById('description').value;
+    
+    try {
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                order_number: orderNumber,
+                description: description
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showMessage('Zlecenie utworzone pomyślnie!', 'success');
+            document.getElementById('orderForm').reset();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showMessage(data.error || 'Błąd podczas tworzenia zlecenia', 'error');
+        }
+    } catch (error) {
+        showMessage('Błąd komunikacji z serwerem', 'error');
+    }
+});
+
+function showMessage(msg, type) {
+    const messageDiv = document.getElementById('message');
+    messageDiv.textContent = msg;
+    messageDiv.className = `message ${type}`;
+    messageDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        messageDiv.style.display = 'none';
+    }, 5000);
+}
+
+function showQR(orderId, orderNumber) {
+    const modal = document.getElementById('qrModal');
+    const container = document.getElementById('qrCodeContainer');
+    document.getElementById('modalOrderNumber').textContent = orderNumber;
+    
+    container.innerHTML = `<img src="/api/orders/${orderId}/qrcode" alt="QR Code" style="max-width: 100%;">`;
+    modal.style.display = 'block';
+}
+
+function closeModal() {
+    document.getElementById('qrModal').style.display = 'none';
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('qrModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

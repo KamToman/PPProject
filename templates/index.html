@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero">
+    <h1>System Pomiaru Czasów Produkcji</h1>
+    <p>Aplikacja do zarządzania czasami procesów produkcyjnych</p>
+</div>
+
+<div class="panels-grid">
+    <div class="panel-card">
+        <h2>Panel Projektanta</h2>
+        <p>Twórz zlecenia produkcyjne i generuj kody QR dla każdego zlecenia.</p>
+        <a href="{{ url_for('designer_panel') }}" class="btn btn-primary">Przejdź do panelu</a>
+    </div>
+    
+    <div class="panel-card">
+        <h2>Panel Pracownika</h2>
+        <p>Skanuj kody QR i rejestruj czas pracy na poszczególnych etapach produkcji.</p>
+        <a href="{{ url_for('worker_panel') }}" class="btn btn-primary">Przejdź do panelu</a>
+    </div>
+    
+    <div class="panel-card">
+        <h2>Panel Kierownika</h2>
+        <p>Przeglądaj raporty i analizy czasów produkcji oraz wydajności pracowników.</p>
+        <a href="{{ url_for('manager_panel') }}" class="btn btn-primary">Przejdź do panelu</a>
+    </div>
+</div>
+{% endblock %}

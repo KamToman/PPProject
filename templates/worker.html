@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Pracownika{% endblock %}
+
+{% block content %}
+<h1>Panel Pracownika</h1>
+
+<div class="card">
+    <h2>Informacje pracownika</h2>
+    <div class="form-group">
+        <label for="workerName">Imię i nazwisko:</label>
+        <input type="text" id="workerName" placeholder="Wprowadź swoje imię i nazwisko">
+    </div>
+    
+    <div class="form-group">
+        <label for="stageSelect">Etap produkcji:</label>
+        <select id="stageSelect">
+            <option value="">Wybierz etap</option>
+            {% for stage in stages %}
+            <option value="{{ stage.id }}">{{ stage.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Skanuj kod QR</h2>
+    <p class="text-muted">Wprowadź dane z kodu QR lub użyj czytnika kodów QR na swoim urządzeniu mobilnym</p>
+    
+    <div class="form-group">
+        <label for="qrInput">Kod QR zlecenia:</label>
+        <input type="text" id="qrInput" placeholder="ORDER:XXX lub skanuj kod QR">
+    </div>
+    
+    <div class="action-buttons">
+        <button id="startBtn" class="btn btn-success">Start pracy</button>
+        <button id="stopBtn" class="btn btn-danger">Stop pracy</button>
+    </div>
+    
+    <div id="message" class="message"></div>
+</div>
+
+<div class="card">
+    <h2>Aktywne sesje pracy</h2>
+    <div id="activeSessions">
+        <p class="text-muted">Wprowadź swoje imię i nazwisko aby zobaczyć aktywne sesje</p>
+    </div>
+</div>
+
+<script>
+let currentWorkerName = '';
+let checkInterval = null;
+
+document.getElementById('workerName').addEventListener('input', (e) => {
+    currentWorkerName = e.target.value;
+    if (currentWorkerName) {
+        loadActiveSessions();
+        if (!checkInterval) {
+            checkInterval = setInterval(loadActiveSessions, 30000); // Check every 30 seconds
+        }
+    } else {
+        if (checkInterval) {
+            clearInterval(checkInterval);
+            checkInterval = null;
+        }
+        document.getElementById('activeSessions').innerHTML = 
+            '<p class="text-muted">Wprowadź swoje imię i nazwisko aby zobaczyć aktywne sesje</p>';
+    }
+});
+
+document.getElementById('startBtn').addEventListener('click', () => {
+    processAction('start');
+});
+
+document.getElementById('stopBtn').addEventListener('click', () => {
+    processAction('stop');
+});
+
+async function processAction(action) {
+    const workerName = document.getElementById('workerName').value;
+    const stageId = document.getElementById('stageSelect').value;
+    const qrData = document.getElementById('qrInput').value;
+    
+    if (!workerName) {
+        showMessage('Wprowadź imię i nazwisko', 'error');
+        return;
+    }
+    
+    if (!stageId) {
+        showMessage('Wybierz etap produkcji', 'error');
+        return;
+    }
+    
+    if (!qrData) {
+        showMessage('Wprowadź lub zeskanuj kod QR', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                qr_data: qrData,
+                worker_name: workerName,
+                stage_id: stageId,
+                action: action
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showMessage(data.message, 'success');
+            if (action === 'start') {
+                showMessage(`Rozpoczęto pracę nad zleceniem ${data.order_number} na etapie ${data.stage}`, 'success');
+            } else {
+                showMessage(`Zakończono pracę. Czas trwania: ${data.duration_minutes} minut`, 'success');
+            }
+            document.getElementById('qrInput').value = '';
+            loadActiveSessions();
+        } else {
+            showMessage(data.error || 'Błąd podczas przetwarzania', 'error');
+        }
+    } catch (error) {
+        showMessage('Błąd komunikacji z serwerem', 'error');
+    }
+}
+
+async function loadActiveSessions() {
+    if (!currentWorkerName) return;
+    
+    try {
+        const response = await fetch(`/api/worker/active-sessions?worker_name=${encodeURIComponent(currentWorkerName)}`);
+        const sessions = await response.json();
+        
+        const container = document.getElementById('activeSessions');
+        
+        if (sessions.length === 0) {
+            container.innerHTML = '<p class="text-muted">Brak aktywnych sesji pracy</p>';
+        } else {
+            let html = '<table class="table"><thead><tr><th>Zlecenie</th><th>Etap</th><th>Czas rozpoczęcia</th></tr></thead><tbody>';
+            sessions.forEach(session => {
+                const startTime = new Date(session.start_time).toLocaleString('pl-PL');
+                html += `<tr>
+                    <td>${session.order_number}</td>
+                    <td>${session.stage_name}</td>
+                    <td>${startTime}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Error loading active sessions:', error);
+    }
+}
+
+function showMessage(msg, type) {
+    const messageDiv = document.getElementById('message');
+    messageDiv.textContent = msg;
+    messageDiv.className = `message ${type}`;
+    messageDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        messageDiv.style.display = 'none';
+    }, 5000);
+}
+
+// Allow Enter key on QR input for quick scanning
+document.getElementById('qrInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        document.getElementById('startBtn').click();
+    }
+});
+</script>
+{% endblock %}

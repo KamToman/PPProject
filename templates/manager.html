@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Kierownika{% endblock %}
+
+{% block content %}
+<h1>Panel Kierownika / Inżyniera Procesów</h1>
+
+<div class="card">
+    <h2>Raporty i Analizy</h2>
+    
+    <div class="report-tabs">
+        <button class="tab-btn active" onclick="showTab('order-times')">Czasy zleceń</button>
+        <button class="tab-btn" onclick="showTab('worker-productivity')">Wydajność pracowników</button>
+        <button class="tab-btn" onclick="showTab('stage-efficiency')">Efektywność etapów</button>
+    </div>
+</div>
+
+<div id="order-times" class="tab-content active">
+    <div class="card">
+        <h3>Raport czasów zleceń</h3>
+        <div class="form-group">
+            <label for="orderFilter">Filtruj według zlecenia:</label>
+            <select id="orderFilter">
+                <option value="">Wszystkie zlecenia</option>
+                {% for order in orders %}
+                <option value="{{ order.id }}">{{ order.order_number }} - {{ order.description }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-primary" onclick="loadOrderTimesReport()">Wczytaj raport</button>
+        </div>
+        
+        <div id="orderTimesReport"></div>
+    </div>
+</div>
+
+<div id="worker-productivity" class="tab-content">
+    <div class="card">
+        <h3>Raport wydajności pracowników</h3>
+        <button class="btn btn-primary" onclick="loadWorkerProductivityReport()">Wczytaj raport</button>
+        
+        <div id="workerProductivityReport"></div>
+    </div>
+</div>
+
+<div id="stage-efficiency" class="tab-content">
+    <div class="card">
+        <h3>Raport efektywności etapów produkcji</h3>
+        <button class="btn btn-primary" onclick="loadStageEfficiencyReport()">Wczytaj raport</button>
+        
+        <div id="stageEfficiencyReport"></div>
+    </div>
+</div>
+
+<script>
+function showTab(tabName) {
+    // Hide all tabs
+    const tabs = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => tab.classList.remove('active'));
+    
+    // Remove active class from all buttons
+    const buttons = document.querySelectorAll('.tab-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    
+    // Show selected tab
+    document.getElementById(tabName).classList.add('active');
+    
+    // Add active class to clicked button
+    event.target.classList.add('active');
+}
+
+async function loadOrderTimesReport() {
+    const orderId = document.getElementById('orderFilter').value;
+    const url = orderId ? `/api/reports/order-times?order_id=${orderId}` : '/api/reports/order-times';
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        const container = document.getElementById('orderTimesReport');
+        
+        if (data.length === 0) {
+            container.innerHTML = '<p class="text-muted">Brak danych do wyświetlenia</p>';
+            return;
+        }
+        
+        let html = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Zlecenie</th>
+                        <th>Opis</th>
+                        <th>Etap</th>
+                        <th>Liczba sesji</th>
+                        <th>Całkowity czas (min)</th>
+                        <th>Całkowity czas (godz)</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        data.forEach(row => {
+            html += `
+                <tr>
+                    <td>${row.order_number}</td>
+                    <td>${row.description || '-'}</td>
+                    <td>${row.stage_name}</td>
+                    <td>${row.work_sessions}</td>
+                    <td>${row.total_minutes}</td>
+                    <td>${row.total_hours}</td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (error) {
+        document.getElementById('orderTimesReport').innerHTML = 
+            '<p class="error">Błąd podczas ładowania raportu</p>';
+    }
+}
+
+async function loadWorkerProductivityReport() {
+    try {
+        const response = await fetch('/api/reports/worker-productivity');
+        const data = await response.json();
+        
+        const container = document.getElementById('workerProductivityReport');
+        
+        if (data.length === 0) {
+            container.innerHTML = '<p class="text-muted">Brak danych do wyświetlenia</p>';
+            return;
+        }
+        
+        let html = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Pracownik</th>
+                        <th>Liczba sesji</th>
+                        <th>Całkowity czas (min)</th>
+                        <th>Całkowity czas (godz)</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        data.forEach(row => {
+            html += `
+                <tr>
+                    <td>${row.worker_name}</td>
+                    <td>${row.work_sessions}</td>
+                    <td>${row.total_minutes}</td>
+                    <td>${row.total_hours}</td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (error) {
+        document.getElementById('workerProductivityReport').innerHTML = 
+            '<p class="error">Błąd podczas ładowania raportu</p>';
+    }
+}
+
+async function loadStageEfficiencyReport() {
+    try {
+        const response = await fetch('/api/reports/stage-efficiency');
+        const data = await response.json();
+        
+        const container = document.getElementById('stageEfficiencyReport');
+        
+        if (data.length === 0) {
+            container.innerHTML = '<p class="text-muted">Brak danych do wyświetlenia</p>';
+            return;
+        }
+        
+        let html = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Etap</th>
+                        <th>Liczba sesji</th>
+                        <th>Średni czas (min)</th>
+                        <th>Średni czas (godz)</th>
+                        <th>Całkowity czas (min)</th>
+                        <th>Całkowity czas (godz)</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        data.forEach(row => {
+            html += `
+                <tr>
+                    <td>${row.stage_name}</td>
+                    <td>${row.work_sessions}</td>
+                    <td>${row.avg_minutes}</td>
+                    <td>${row.avg_hours}</td>
+                    <td>${row.total_minutes}</td>
+                    <td>${row.total_hours}</td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (error) {
+        document.getElementById('stageEfficiencyReport').innerHTML = 
+            '<p class="error">Błąd podczas ładowania raportu</p>';
+    }
+}
+
+// Load initial report on page load
+window.addEventListener('load', () => {
+    loadOrderTimesReport();
+});
+</script>
+{% endblock %}
