@@ -220,15 +220,19 @@ def get_order_times_report():
     """Get time report for all orders"""
     order_id = request.args.get('order_id', type=int)
     
+    # Calculate duration in days (SQLite Julian day difference)
+    duration_days = db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
+    
     query = db.session.query(
         Order.order_number,
         Order.description,
         ProductionStage.name.label('stage_name'),
         db.func.count(TimeLog.id).label('work_sessions'),
-        db.func.sum(
-            db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
-        ).label('total_days')
-    ).select_from(Order).join(TimeLog, Order.id == TimeLog.order_id).join(ProductionStage, TimeLog.stage_id == ProductionStage.id).filter(TimeLog.status == 'completed')
+        db.func.sum(duration_days).label('total_days')
+    ).select_from(Order)\
+     .join(TimeLog, Order.id == TimeLog.order_id)\
+     .join(ProductionStage, TimeLog.stage_id == ProductionStage.id)\
+     .filter(TimeLog.status == 'completed')
     
     if order_id:
         query = query.filter(Order.id == order_id)
@@ -255,13 +259,15 @@ def get_order_times_report():
 @app.route('/api/reports/worker-productivity')
 def get_worker_productivity_report():
     """Get productivity report by worker"""
+    # Calculate duration in days (SQLite Julian day difference)
+    duration_days = db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
+    
     results = db.session.query(
         TimeLog.worker_name,
         db.func.count(TimeLog.id).label('work_sessions'),
-        db.func.sum(
-            db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
-        ).label('total_days')
-    ).filter(TimeLog.status == 'completed').group_by(TimeLog.worker_name).all()
+        db.func.sum(duration_days).label('total_days')
+    ).filter(TimeLog.status == 'completed')\
+     .group_by(TimeLog.worker_name).all()
     
     report_data = []
     for row in results:
@@ -279,16 +285,18 @@ def get_worker_productivity_report():
 @app.route('/api/reports/stage-efficiency')
 def get_stage_efficiency_report():
     """Get efficiency report by production stage"""
+    # Calculate duration in days (SQLite Julian day difference)
+    duration_days = db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
+    
     results = db.session.query(
         ProductionStage.name,
         db.func.count(TimeLog.id).label('work_sessions'),
-        db.func.avg(
-            db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
-        ).label('avg_days'),
-        db.func.sum(
-            db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
-        ).label('total_days')
-    ).select_from(ProductionStage).join(TimeLog, TimeLog.stage_id == ProductionStage.id).filter(TimeLog.status == 'completed').group_by(ProductionStage.id).all()
+        db.func.avg(duration_days).label('avg_days'),
+        db.func.sum(duration_days).label('total_days')
+    ).select_from(ProductionStage)\
+     .join(TimeLog, TimeLog.stage_id == ProductionStage.id)\
+     .filter(TimeLog.status == 'completed')\
+     .group_by(ProductionStage.id).all()
     
     report_data = []
     for row in results:

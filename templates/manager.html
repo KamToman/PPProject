@@ -9,9 +9,9 @@
     <h2>Raporty i Analizy</h2>
     
     <div class="report-tabs">
-        <button class="tab-btn active" onclick="showTab('order-times')">Czasy zleceń</button>
-        <button class="tab-btn" onclick="showTab('worker-productivity')">Wydajność pracowników</button>
-        <button class="tab-btn" onclick="showTab('stage-efficiency')">Efektywność etapów</button>
+        <button class="tab-btn active" onclick="showTab('order-times', event)">Czasy zleceń</button>
+        <button class="tab-btn" onclick="showTab('worker-productivity', event)">Wydajność pracowników</button>
+        <button class="tab-btn" onclick="showTab('stage-efficiency', event)">Efektywność etapów</button>
     </div>
 </div>
 
@@ -52,7 +52,7 @@
 </div>
 
 <script>
-function showTab(tabName) {
+function showTab(tabName, event) {
     // Hide all tabs
     const tabs = document.querySelectorAll('.tab-content');
     tabs.forEach(tab => tab.classList.remove('active'));
