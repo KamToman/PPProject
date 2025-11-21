@@ -123,10 +123,16 @@ Domyślne etapy:
 
 ## Bezpieczeństwo
 
-- W wersji produkcyjnej zmień `SECRET_KEY` w pliku `app.py`
-- Wyłącz tryb debug (`debug=False`) w wersji produkcyjnej
+- Aplikacja automatycznie generuje losowy `SECRET_KEY` dla każdej sesji
+- W produkcji ustaw zmienną środowiskową `SECRET_KEY` na stałą wartość
+- Tryb debug jest domyślnie wyłączony; włącz przez `FLASK_DEBUG=true` tylko dla rozwoju
 - Rozważ dodanie uwierzytelniania użytkowników
 - Używaj HTTPS w środowisku produkcyjnym
+
+## Zmienne środowiskowe
+
+- `SECRET_KEY` - Klucz sesji Flask (wymagane w produkcji)
+- `FLASK_DEBUG` - Ustaw na 'true' aby włączyć tryb debug (tylko dla rozwoju)
 
 ## Licencja
 
