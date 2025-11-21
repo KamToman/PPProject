@@ -47,6 +47,22 @@ python app.py
 http://localhost:5000
 ```
 
+## Demo
+
+Aby zobaczyć demonstrację funkcjonalności aplikacji:
+
+1. Upewnij się, że aplikacja jest uruchomiona (`python app.py`)
+2. W nowym terminalu uruchom:
+```bash
+pip install requests  # jeśli jeszcze nie zainstalowane
+python demo.py
+```
+
+Demo automatycznie:
+- Utworzy nowe zlecenie
+- Rozpocznie i zakończy pracę na różnych etapach produkcji
+- Wyświetli raporty z czasami pracy
+
 ## Struktura bazy danych
 
 ### Tabela: Orders (Zlecenia)
