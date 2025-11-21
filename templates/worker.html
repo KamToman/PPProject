@@ -2,10 +2,6 @@
 
 {% block title %}Panel Pracownika{% endblock %}
 
-{% block extra_css %}
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-{% endblock %}
-
 {% block content %}
 <h1>Panel Pracownika</h1>
 
@@ -200,6 +196,12 @@ document.getElementById('stopScanBtn').addEventListener('click', () => {
 function startQRScanner() {
     if (isScanning) return;
     
+    // Check if Html5Qrcode library is loaded
+    if (typeof Html5Qrcode === 'undefined') {
+        showMessage('Biblioteka skanowania nie została załadowana. Odśwież stronę.', 'error');
+        return;
+    }
+    
     const qrReaderDiv = document.getElementById('qrReader');
     qrReaderDiv.style.display = 'block';
     
@@ -236,15 +238,24 @@ function stopQRScanner() {
     if (!isScanning || !html5QrcodeScanner) return;
     
     html5QrcodeScanner.stop().then(() => {
-        html5QrcodeScanner.clear();
-        html5QrcodeScanner = null;
-        isScanning = false;
-        document.getElementById('qrReader').style.display = 'none';
-        document.getElementById('scanBtn').style.display = 'inline-block';
-        document.getElementById('stopScanBtn').style.display = 'none';
+        resetScannerUI();
     }).catch((err) => {
         console.error('Error stopping scanner:', err);
+        // Reset UI even if stopping fails
+        resetScannerUI();
     });
 }
+
+function resetScannerUI() {
+    if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear();
+        html5QrcodeScanner = null;
+    }
+    isScanning = false;
+    document.getElementById('qrReader').style.display = 'none';
+    document.getElementById('scanBtn').style.display = 'inline-block';
+    document.getElementById('stopScanBtn').style.display = 'none';
+}
 </script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 {% endblock %}
