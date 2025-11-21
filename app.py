@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
-from models import db, Order, ProductionStage, TimeLog
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session, flash
+from models import db, Order, ProductionStage, TimeLog, User
 from datetime import datetime
+from functools import wraps
 import qrcode
 import io
 import os
@@ -14,24 +15,195 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
 
 db.init_app(app)
 
+
+# ========== Authentication Decorators ==========
+
+def login_required(f):
+    """Decorator to require login for a route"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Musisz się zalogować aby uzyskać dostęp do tej strony.', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def role_required(*roles):
+    """Decorator to require specific role(s) for a route"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                flash('Musisz się zalogować aby uzyskać dostęp do tej strony.', 'error')
+                return redirect(url_for('login'))
+            
+            user = User.query.get(session['user_id'])
+            if not user or user.role not in roles:
+                flash('Nie masz uprawnień do tej strony.', 'error')
+                return redirect(url_for('index'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
+def get_current_user():
+    """Get the currently logged-in user"""
+    if 'user_id' in session:
+        return User.query.get(session['user_id'])
+    return None
+
 # Create QR codes directory
 QR_CODE_DIR = os.path.join(app.root_path, 'static', 'qr_codes')
 os.makedirs(QR_CODE_DIR, exist_ok=True)
 
 
 @app.route('/')
+@login_required
 def index():
     """Home page with navigation to different panels"""
-    return render_template('index.html')
+    user = get_current_user()
+    return render_template('index.html', user=user)
+
+
+# ========== Authentication Routes ==========
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password) and user.is_active:
+            session['user_id'] = user.id
+            session['username'] = user.username
+            session['role'] = user.role
+            flash(f'Witaj, {user.full_name}!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Nieprawidłowa nazwa użytkownika lub hasło.', 'error')
+    
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    """Logout and clear session"""
+    session.clear()
+    flash('Zostałeś wylogowany.', 'info')
+    return redirect(url_for('login'))
+
+
+# ========== Admin Panel ==========
+
+@app.route('/admin')
+@role_required('admin')
+def admin_panel():
+    """Admin panel for user and process management"""
+    users = User.query.all()
+    stages = ProductionStage.query.all()
+    return render_template('admin.html', users=users, stages=stages, user=get_current_user())
+
+
+@app.route('/api/users', methods=['GET', 'POST'])
+@role_required('admin')
+def manage_users():
+    """Get all users or create a new user"""
+    if request.method == 'GET':
+        users = User.query.all()
+        return jsonify([{
+            'id': user.id,
+            'username': user.username,
+            'full_name': user.full_name,
+            'role': user.role,
+            'is_active': user.is_active,
+            'assigned_stages': [{'id': s.id, 'name': s.name} for s in user.assigned_stages]
+        } for user in users]), 200
+    
+    elif request.method == 'POST':
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+        full_name = data.get('full_name')
+        role = data.get('role')
+        stage_ids = data.get('stage_ids', [])
+        
+        if not all([username, password, full_name, role]):
+            return jsonify({'error': 'All fields are required'}), 400
+        
+        if User.query.filter_by(username=username).first():
+            return jsonify({'error': 'Username already exists'}), 400
+        
+        user = User(username=username, full_name=full_name, role=role)
+        user.set_password(password)
+        
+        # Assign stages if role is worker
+        if role == 'worker' and stage_ids:
+            stages = ProductionStage.query.filter(ProductionStage.id.in_(stage_ids)).all()
+            user.assigned_stages = stages
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'full_name': user.full_name,
+            'role': user.role
+        }), 201
+
+
+@app.route('/api/users/<int:user_id>', methods=['PUT', 'DELETE'])
+@role_required('admin')
+def manage_user(user_id):
+    """Update or delete a user"""
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'PUT':
+        data = request.json
+        
+        if 'full_name' in data:
+            user.full_name = data['full_name']
+        if 'role' in data:
+            user.role = data['role']
+        if 'is_active' in data:
+            user.is_active = data['is_active']
+        if 'password' in data and data['password']:
+            user.set_password(data['password'])
+        if 'stage_ids' in data:
+            stage_ids = data['stage_ids']
+            stages = ProductionStage.query.filter(ProductionStage.id.in_(stage_ids)).all()
+            user.assigned_stages = stages
+        
+        db.session.commit()
+        
+        return jsonify({
+            'id': user.id,
+            'username': user.username,
+            'full_name': user.full_name,
+            'role': user.role,
+            'is_active': user.is_active,
+            'assigned_stages': [{'id': s.id, 'name': s.name} for s in user.assigned_stages]
+        }), 200
+    
+    elif request.method == 'DELETE':
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'message': 'User deleted'}), 200
 
 
 # ========== Designer Panel ==========
 
 @app.route('/designer')
+@role_required('admin', 'designer')
 def designer_panel():
     """Designer panel for creating orders and generating QR codes"""
     orders = Order.query.order_by(Order.created_at.desc()).all()
-    return render_template('designer.html', orders=orders)
+    return render_template('designer.html', orders=orders, user=get_current_user())
 
 
 @app.route('/api/orders', methods=['POST'])
@@ -90,10 +262,16 @@ def generate_qr_code(order_id):
 # ========== Worker Panel ==========
 
 @app.route('/worker')
+@role_required('admin', 'worker')
 def worker_panel():
     """Worker panel for scanning QR codes and tracking time"""
-    stages = ProductionStage.query.all()
-    return render_template('worker.html', stages=stages)
+    user = get_current_user()
+    # Show only assigned stages for workers, all stages for admin
+    if user.role == 'worker':
+        stages = user.assigned_stages
+    else:
+        stages = ProductionStage.query.all()
+    return render_template('worker.html', stages=stages, user=user)
 
 
 @app.route('/api/scan', methods=['POST'])
@@ -210,11 +388,12 @@ def get_active_sessions():
 # ========== Manager Panel ==========
 
 @app.route('/manager')
+@role_required('admin', 'manager')
 def manager_panel():
     """Manager panel for viewing reports and analytics"""
     orders = Order.query.all()
     stages = ProductionStage.query.all()
-    return render_template('manager.html', orders=orders, stages=stages)
+    return render_template('manager.html', orders=orders, stages=stages, user=get_current_user())
 
 
 @app.route('/api/reports/order-times')
@@ -351,6 +530,20 @@ def manage_stages():
 # Initialize database
 with app.app_context():
     db.create_all()
+    
+    # Create default admin user if no users exist
+    if User.query.count() == 0:
+        admin = User(
+            username='admin',
+            full_name='Administrator',
+            role='admin',
+            is_active=True
+        )
+        admin.set_password('admin123')  # Default password - should be changed after first login
+        db.session.add(admin)
+        db.session.commit()
+        print("Default admin user created: username='admin', password='admin123'")
+        print("IMPORTANT: Please change the default password after first login!")
     
     # Create default production stages if they don't exist
     if ProductionStage.query.count() == 0:
