@@ -141,6 +141,23 @@ Domyślne etapy:
 - Jeśli biblioteka się nie załaduje, użyj ręcznego wprowadzania kodów QR
 - Możliwe przyczyny błędu ładowania: firewall, blokada reklam, brak internetu
 
+### Rozwiązywanie problemów z kamerą
+
+**Błąd: "NotReadableError: Could not start video source"**
+
+Ten błąd występuje gdy:
+1. **Kamera jest już używana** - Zamknij inne aplikacje/karty przeglądarki używające kamery
+2. **Brak uprawnień** - Sprawdź ustawienia kamery w przeglądarce:
+   - Chrome: Kliknij ikonę kłódki obok URL → Ustawienia witryny → Kamera
+   - Firefox: Kliknij ikonę informacji obok URL → Uprawnienia → Kamera
+3. **Problemy ze sterownikami** - Sprawdź czy kamera działa w innych aplikacjach
+4. **Konflikty sprzętowe** - Spróbuj odłączyć i podłączyć ponownie kamerę USB
+
+**Inne problemy**:
+- **"Permission denied"** - Zezwól na dostęp do kamery w wyskakującym oknie przeglądarki
+- **"Requested device not found"** - Sprawdź czy kamera jest podłączona i wykryta przez system
+- **Kamera się nie uruchamia** - Odśwież stronę (Ctrl+F5) lub kliknij przycisk "Rozpocznij skanowanie"
+
 ### Przeglądanie raportów (Kierownik)
 1. Przejdź do Panelu Kierownika
 2. Wybierz interesujący raport z zakładek:
