@@ -378,6 +378,7 @@ def get_active_sessions():
         sessions.append({
             'log_id': log.id,
             'order_number': log.order.order_number,
+            'qr_data': f'ORDER:{log.order.order_number}',
             'stage_name': log.stage.name,
             'start_time': log.start_time.isoformat()
         })

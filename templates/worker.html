@@ -25,24 +25,13 @@
 
 <div class="card">
     <h2>Skanuj kod QR</h2>
-    <p class="text-muted">Wprowadź dane z kodu QR lub użyj kamery do skanowania</p>
+    <p class="text-muted">Zeskanuj kod QR aby automatycznie rozpocząć lub zakończyć pracę</p>
     
     <div class="form-group">
-        <label for="qrInput">Kod QR zlecenia:</label>
-        <input type="text" id="qrInput" placeholder="ORDER:XXX lub skanuj kod QR">
-    </div>
-    
-    <div class="form-group">
-        <button id="scanBtn" class="btn btn-primary">📷 Skanuj kamerą</button>
         <button id="stopScanBtn" class="btn btn-danger" style="display: none;">⏹️ Zatrzymaj skanowanie</button>
     </div>
     
-    <div id="qrReader" style="display: none; margin-top: 1rem;"></div>
-    
-    <div class="action-buttons">
-        <button id="startBtn" class="btn btn-success">Start pracy</button>
-        <button id="stopBtn" class="btn btn-danger">Stop pracy</button>
-    </div>
+    <div id="qrReader" style="margin-top: 1rem;"></div>
     
     <div id="message" class="message"></div>
 </div>
@@ -77,33 +66,27 @@ document.getElementById('workerName').addEventListener('input', (e) => {
     }
 });
 
-document.getElementById('startBtn').addEventListener('click', () => {
-    processAction('start');
-});
-
-document.getElementById('stopBtn').addEventListener('click', () => {
-    processAction('stop');
-});
-
-async function processAction(action) {
+async function processQRScan(qrData) {
     const workerName = document.getElementById('workerName').value;
     const stageId = document.getElementById('stageSelect').value;
-    const qrData = document.getElementById('qrInput').value;
     
     if (!workerName) {
-        showMessage('Wprowadź imię i nazwisko', 'error');
+        showMessage('Wprowadź imię i nazwisko przed skanowaniem', 'error');
         return;
     }
     
     if (!stageId) {
-        showMessage('Wybierz etap produkcji', 'error');
+        showMessage('Wybierz etap produkcji przed skanowaniem', 'error');
         return;
     }
     
-    if (!qrData) {
-        showMessage('Wprowadź lub zeskanuj kod QR', 'error');
-        return;
-    }
+    // Check if there's an active session for this order
+    const activeSessions = await getActiveSessions();
+    const existingSession = activeSessions.find(session => {
+        return session.qr_data === qrData && session.worker_name === workerName;
+    });
+    
+    const action = existingSession ? 'stop' : 'start';
     
     try {
         const response = await fetch('/api/scan', {
@@ -123,11 +106,10 @@ async function processAction(action) {
         
         if (response.ok) {
             if (action === 'start') {
-                showMessage(`Rozpoczęto pracę nad zleceniem ${data.order_number} na etapie ${data.stage}`, 'success');
+                showMessage(`✅ Rozpoczęto pracę nad zleceniem ${data.order_number} na etapie ${data.stage}`, 'success');
             } else {
-                showMessage(`Zakończono pracę. Czas trwania: ${data.duration_minutes} minut`, 'success');
+                showMessage(`⏹️ Zakończono pracę. Czas trwania: ${data.duration_minutes} minut`, 'success');
             }
-            document.getElementById('qrInput').value = '';
             loadActiveSessions();
         } else {
             showMessage(data.error || 'Błąd podczas przetwarzania', 'error');
@@ -135,6 +117,20 @@ async function processAction(action) {
     } catch (error) {
         showMessage('Błąd komunikacji z serwerem', 'error');
     }
+}
+
+async function getActiveSessions() {
+    if (!currentWorkerName) return [];
+    
+    try {
+        const response = await fetch(`/api/worker/active-sessions?worker_name=${encodeURIComponent(currentWorkerName)}`);
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (error) {
+        console.error('Error fetching active sessions:', error);
+    }
+    return [];
 }
 
 async function loadActiveSessions() {
@@ -185,10 +181,6 @@ document.getElementById('qrInput').addEventListener('keypress', (e) => {
 });
 
 // Camera QR scanning functionality
-document.getElementById('scanBtn').addEventListener('click', () => {
-    startQRScanner();
-});
-
 document.getElementById('stopScanBtn').addEventListener('click', () => {
     stopQRScanner();
 });
@@ -198,7 +190,7 @@ function startQRScanner() {
     
     // Check if Html5Qrcode library is loaded
     if (typeof Html5Qrcode === 'undefined') {
-        showMessage('Biblioteka skanowania nie została załadowana. Sprawdź połączenie internetowe i odśwież stronę. Jeśli problem się powtarza, użyj ręcznego wprowadzania kodu QR.', 'error');
+        showMessage('Biblioteka skanowania nie została załadowana. Sprawdź połączenie internetowe i odśwież stronę.', 'error');
         return;
     }
     
@@ -216,23 +208,28 @@ function startQRScanner() {
         { facingMode: "environment" }, // Use back camera on mobile
         config,
         (decodedText, decodedResult) => {
-            // QR code successfully scanned
-            document.getElementById('qrInput').value = decodedText;
-            showMessage('Kod QR zeskanowany pomyślnie!', 'success');
-            stopQRScanner();
+            // QR code successfully scanned - automatically process it
+            processQRScan(decodedText);
         },
         (errorMessage) => {
             // Scanning error or no QR code detected - this is normal, ignore
         }
     ).then(() => {
         isScanning = true;
-        document.getElementById('scanBtn').style.display = 'none';
         document.getElementById('stopScanBtn').style.display = 'inline-block';
     }).catch((err) => {
         showMessage('Błąd uruchamiania kamery: ' + (err.message || err), 'error');
         qrReaderDiv.style.display = 'none';
     });
 }
+
+// Auto-start scanner when page loads
+window.addEventListener('load', () => {
+    // Wait a bit for the library to load
+    setTimeout(() => {
+        startQRScanner();
+    }, 500);
+});
 
 function stopQRScanner() {
     if (!isScanning || !html5QrcodeScanner) return;
@@ -256,8 +253,7 @@ function resetScannerUI() {
         html5QrcodeScanner = null;
     }
     isScanning = false;
-    document.getElementById('qrReader').style.display = 'none';
-    document.getElementById('scanBtn').style.display = 'inline-block';
+    document.getElementById('qrReader').style.display = 'block';
     document.getElementById('stopScanBtn').style.display = 'none';
 }
 </script>
