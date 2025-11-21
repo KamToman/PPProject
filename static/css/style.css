@@ -363,3 +363,21 @@ footer {
         flex-direction: column;
     }
 }
+
+/* QR Code Scanner */
+#qrReader {
+    border: 2px solid #3498db;
+    border-radius: 10px;
+    overflow: hidden;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+#qrReader video {
+    width: 100%;
+    display: block;
+}
+
+#qrReader canvas {
+    display: none;
+}

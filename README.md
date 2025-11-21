@@ -105,9 +105,13 @@ Domyślne etapy:
 1. Przejdź do Panelu Pracownika
 2. Wprowadź swoje imię i nazwisko
 3. Wybierz etap produkcji, na którym pracujesz
-4. Zeskanuj lub wprowadź kod QR zlecenia
+4. Skanuj kod QR na jeden z dwóch sposobów:
+   - **Kamera PC/telefonu**: Kliknij "📷 Skanuj kamerą" i zezwól na dostęp do kamery
+   - **Ręczne wprowadzenie**: Wpisz kod QR ręcznie w pole tekstowe
 5. Kliknij "Start pracy" aby rozpocząć
 6. Kliknij "Stop pracy" aby zakończyć pracę na tym zleceniu
+
+**Uwaga**: Skanowanie kamerą wymaga przeglądarki z obsługą dostępu do kamery (HTTPS w produkcji lub localhost w rozwoju)
 
 ### Przeglądanie raportów (Kierownik)
 1. Przejdź do Panelu Kierownika

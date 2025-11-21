@@ -2,6 +2,10 @@
 
 {% block title %}Panel Pracownika{% endblock %}
 
+{% block extra_css %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <h1>Panel Pracownika</h1>
 
@@ -25,12 +29,19 @@
 
 <div class="card">
     <h2>Skanuj kod QR</h2>
-    <p class="text-muted">Wprowadź dane z kodu QR lub użyj czytnika kodów QR na swoim urządzeniu mobilnym</p>
+    <p class="text-muted">Wprowadź dane z kodu QR lub użyj kamery do skanowania</p>
     
     <div class="form-group">
         <label for="qrInput">Kod QR zlecenia:</label>
         <input type="text" id="qrInput" placeholder="ORDER:XXX lub skanuj kod QR">
     </div>
+    
+    <div class="form-group">
+        <button id="scanBtn" class="btn btn-primary">📷 Skanuj kamerą</button>
+        <button id="stopScanBtn" class="btn btn-danger" style="display: none;">⏹️ Zatrzymaj skanowanie</button>
+    </div>
+    
+    <div id="qrReader" style="display: none; margin-top: 1rem;"></div>
     
     <div class="action-buttons">
         <button id="startBtn" class="btn btn-success">Start pracy</button>
@@ -50,6 +61,8 @@
 <script>
 let currentWorkerName = '';
 let checkInterval = null;
+let html5QrcodeScanner = null;
+let isScanning = false;
 
 document.getElementById('workerName').addEventListener('input', (e) => {
     currentWorkerName = e.target.value;
@@ -174,5 +187,64 @@ document.getElementById('qrInput').addEventListener('keypress', (e) => {
         document.getElementById('startBtn').click();
     }
 });
+
+// Camera QR scanning functionality
+document.getElementById('scanBtn').addEventListener('click', () => {
+    startQRScanner();
+});
+
+document.getElementById('stopScanBtn').addEventListener('click', () => {
+    stopQRScanner();
+});
+
+function startQRScanner() {
+    if (isScanning) return;
+    
+    const qrReaderDiv = document.getElementById('qrReader');
+    qrReaderDiv.style.display = 'block';
+    
+    html5QrcodeScanner = new Html5Qrcode("qrReader");
+    
+    const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+    };
+    
+    html5QrcodeScanner.start(
+        { facingMode: "environment" }, // Use back camera on mobile
+        config,
+        (decodedText, decodedResult) => {
+            // QR code successfully scanned
+            document.getElementById('qrInput').value = decodedText;
+            showMessage('Kod QR zeskanowany pomyślnie!', 'success');
+            stopQRScanner();
+        },
+        (errorMessage) => {
+            // Scanning error or no QR code detected - this is normal, ignore
+        }
+    ).then(() => {
+        isScanning = true;
+        document.getElementById('scanBtn').style.display = 'none';
+        document.getElementById('stopScanBtn').style.display = 'inline-block';
+    }).catch((err) => {
+        showMessage('Błąd uruchamiania kamery: ' + err, 'error');
+        qrReaderDiv.style.display = 'none';
+    });
+}
+
+function stopQRScanner() {
+    if (!isScanning || !html5QrcodeScanner) return;
+    
+    html5QrcodeScanner.stop().then(() => {
+        html5QrcodeScanner.clear();
+        html5QrcodeScanner = null;
+        isScanning = false;
+        document.getElementById('qrReader').style.display = 'none';
+        document.getElementById('scanBtn').style.display = 'inline-block';
+        document.getElementById('stopScanBtn').style.display = 'none';
+    }).catch((err) => {
+        console.error('Error stopping scanner:', err);
+    });
+}
 </script>
 {% endblock %}
