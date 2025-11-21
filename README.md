@@ -4,24 +4,40 @@ Aplikacja webowa do pomiaru i zarządzania czasami procesów produkcyjnych przy 
 
 ## Funkcjonalności
 
+### 🔐 System Uwierzytelniania
+- Logowanie użytkowników z bezpiecznym hashowaniem haseł
+- Zarządzanie sesjami
+- Role użytkowników: Admin, Projektant, Pracownik, Kierownik
+- Kontrola dostępu oparta na rolach (RBAC)
+
+### 👤 Panel Administratora (nowy!)
+- Zarządzanie użytkownikami (dodawanie, usuwanie)
+- Przypisywanie ról do użytkowników
+- Przypisywanie wielu procesów/etapów do pracowników
+- Przeglądanie listy użytkowników z ich rolami i uprawnieniami
+- Zarządzanie procesami produkcyjnymi
+
 ### Panel Projektanta
 - Tworzenie nowych zleceń produkcyjnych
 - Generowanie kodów QR dla zleceń
 - Pobieranie i wyświetlanie kodów QR
 - Przeglądanie listy wszystkich zleceń
+- **Dostęp**: Admin, Projektant
 
 ### Panel Pracownika
-- Skanowanie kodów QR zleceń
+- Skanowanie kodów QR zleceń (kamerą lub ręcznie)
 - Rozpoczynanie pracy (start) na wybranym etapie produkcji
 - Kończenie pracy (stop) z automatycznym obliczaniem czasu
 - Wyświetlanie aktywnych sesji pracy
-- Wybór etapu produkcji
+- Wybór z przypisanych etapów produkcji
+- **Dostęp**: Admin, Pracownik (tylko przypisane etapy)
 
 ### Panel Kierownika/Inżyniera Procesów
 - Raport czasów zleceń (z możliwością filtrowania)
 - Raport wydajności pracowników
 - Raport efektywności etapów produkcji
 - Eksport danych w formacie tabelarycznym
+- **Dostęp**: Admin, Kierownik
 
 ## Technologie
 
@@ -42,10 +58,18 @@ pip install -r requirements.txt
 python app.py
 ```
 
-3. Otwórz przeglądarkę i przejdź do:
+3. Pierwsze uruchomienie utworzy domyślne konto administratora:
+   - **Nazwa użytkownika**: `admin`
+   - **Hasło**: `admin123`
+   
+   ⚠️ **WAŻNE**: Zmień hasło administratora po pierwszym logowaniu!
+
+4. Otwórz przeglądarkę i przejdź do:
 ```
 http://localhost:5000
 ```
+
+5. Zaloguj się używając powyższych danych dostępowych
 
 ## Demo
 
@@ -147,11 +171,14 @@ Domyślne etapy:
 
 ## Bezpieczeństwo
 
+- ✅ System uwierzytelniania z bezpiecznym hashowaniem haseł (PBKDF2)
+- ✅ Kontrola dostępu oparta na rolach (RBAC)
+- ✅ Sesje użytkowników z bezpiecznym SECRET_KEY
 - Aplikacja automatycznie generuje losowy `SECRET_KEY` dla każdej sesji
 - W produkcji ustaw zmienną środowiskową `SECRET_KEY` na stałą wartość
 - Tryb debug jest domyślnie wyłączony; włącz przez `FLASK_DEBUG=true` tylko dla rozwoju
-- Rozważ dodanie uwierzytelniania użytkowników
 - Używaj HTTPS w środowisku produkcyjnym
+- Zmień domyślne hasło administratora po pierwszym uruchomieniu
 
 ## Zmienne środowiskowe
 
