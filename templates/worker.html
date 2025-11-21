@@ -239,12 +239,13 @@ function startQRScanner() {
         document.getElementById('stopScanBtn').style.display = 'inline-block';
     }).catch((err) => {
         let errorMsg = 'Błąd uruchamiania kamery: ';
+        const errMessage = err.message || '';
         
-        if (err.name === 'NotReadableError' || err.message.includes('NotReadableError')) {
+        if (err.name === 'NotReadableError' || errMessage.includes('NotReadableError')) {
             errorMsg += 'Kamera jest już używana przez inną aplikację lub kartę przeglądarki. Zamknij inne aplikacje używające kamery i odśwież stronę.';
-        } else if (err.name === 'NotAllowedError' || err.message.includes('Permission denied')) {
+        } else if (err.name === 'NotAllowedError' || errMessage.includes('Permission denied')) {
             errorMsg += 'Brak dostępu do kamery. Zezwól na użycie kamery w ustawieniach przeglądarki i odśwież stronę.';
-        } else if (err.name === 'NotFoundError' || err.message.includes('Requested device not found')) {
+        } else if (err.name === 'NotFoundError' || errMessage.includes('Requested device not found')) {
             errorMsg += 'Nie znaleziono kamery. Upewnij się, że urządzenie ma podłączoną kamerę.';
         } else {
             errorMsg += (err.message || err);
