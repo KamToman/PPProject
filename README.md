@@ -149,6 +149,8 @@ Domyślne etapy:
 
 - `SECRET_KEY` - Klucz sesji Flask (wymagane w produkcji)
 - `FLASK_DEBUG` - Ustaw na 'true' aby włączyć tryb debug (tylko dla rozwoju)
+- `FLASK_HOST` - Host do bindowania (domyślnie: 127.0.0.1, użyj 0.0.0.0 dla dostępu zewnętrznego)
+- `FLASK_PORT` - Port aplikacji (domyślnie: 5000)
 
 ## Licencja
 

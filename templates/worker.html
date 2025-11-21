@@ -113,7 +113,6 @@ async function processAction(action) {
         const data = await response.json();
         
         if (response.ok) {
-            showMessage(data.message, 'success');
             if (action === 'start') {
                 showMessage(`Rozpoczęto pracę nad zleceniem ${data.order_number} na etapie ${data.stage}`, 'success');
             } else {
