@@ -35,6 +35,17 @@
     <div id="qrReader" style="margin-top: 1rem;"></div>
     
     <div id="message" class="message"></div>
+    
+    <div style="margin-top: 1rem; padding: 0.75rem; background-color: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
+        <strong>💡 Wskazówki dotyczące skanowania:</strong>
+        <ul style="margin: 0.5rem 0 0 1.5rem; font-size: 0.9rem;">
+            <li>Upewnij się, że kod QR jest dobrze oświetlony</li>
+            <li>Trzymaj kod QR w centrum niebieskiego kwadratu na ekranie</li>
+            <li>Trzymaj kamerę stabilnie i w odległości 10-30 cm od kodu</li>
+            <li>Jeśli nie skanuje, spróbuj zwiększyć lub zmniejszyć odległość</li>
+            <li>Upewnij się, że kod QR nie jest rozmazany ani uszkodzony</li>
+        </ul>
+    </div>
 </div>
 
 <div class="card">
@@ -220,7 +231,9 @@ function startQRScanner() {
     
     const config = {
         fps: 10,
-        qrbox: { width: 250, height: 250 }
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+        disableFlip: false  // Try both normal and flipped orientations
     };
     
     html5QrcodeScanner.start(
