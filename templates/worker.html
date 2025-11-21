@@ -28,7 +28,7 @@
     <p class="text-muted">Zeskanuj kod QR aby automatycznie rozpocząć lub zakończyć pracę</p>
     
     <div class="form-group">
-        <button id="startScanBtn" class="btn btn-primary" style="display: none;">📷 Rozpocznij skanowanie</button>
+        <button id="startScanBtn" class="btn btn-primary">📷 Rozpocznij skanowanie</button>
         <button id="stopScanBtn" class="btn btn-danger" style="display: none;">⏹️ Zatrzymaj skanowanie</button>
     </div>
     
@@ -300,11 +300,22 @@ function resetScannerUI() {
 // Auto-start scanner after library loads with delay to ensure permissions
 function initScanner() {
     if (typeof Html5Qrcode !== 'undefined') {
+        // Hide start button initially while auto-starting
+        document.getElementById('startScanBtn').style.display = 'none';
+        
         // Add a small delay before auto-starting to allow page to fully load
         setTimeout(() => {
             startQRScanner();
         }, 500);
     } else {
+        // Show start button if library takes too long to load
+        setTimeout(() => {
+            if (typeof Html5Qrcode === 'undefined') {
+                document.getElementById('startScanBtn').style.display = 'inline-block';
+                showMessage('Ładowanie biblioteki skanowania... Jeśli trwa to długo, sprawdź połączenie internetowe.', 'info');
+            }
+        }, 3000);
+        
         // Retry after a short delay if library not loaded yet
         setTimeout(initScanner, 100);
     }
