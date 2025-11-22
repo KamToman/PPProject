@@ -109,7 +109,7 @@ function setupEventListeners() {
 }
 
 async function processQRScan(qrData) {
-    const workerName = document.getElementById('workerName').value;
+    const workerName = document.getElementById('workerName').value.trim();
     const stageId = document.getElementById('stageSelect').value;
     
     if (!workerName) {
@@ -122,8 +122,11 @@ async function processQRScan(qrData) {
         return;
     }
     
+    // Update currentWorkerName to ensure consistency
+    currentWorkerName = workerName;
+    
     // Check if there's an active session for this order AND stage
-    const activeSessions = await getActiveSessions();
+    const activeSessions = await getActiveSessionsForWorker(workerName);
     const existingSession = activeSessions.find(session => {
         return session.qr_data === qrData && 
                session.worker_name === workerName && 
@@ -165,9 +168,14 @@ async function processQRScan(qrData) {
 
 async function getActiveSessions() {
     if (!currentWorkerName) return [];
+    return await getActiveSessionsForWorker(currentWorkerName);
+}
+
+async function getActiveSessionsForWorker(workerName) {
+    if (!workerName) return [];
     
     try {
-        const response = await fetch(`/api/worker/active-sessions?worker_name=${encodeURIComponent(currentWorkerName)}`);
+        const response = await fetch(`/api/worker/active-sessions?worker_name=${encodeURIComponent(workerName)}`);
         if (response.ok) {
             return await response.json();
         }
