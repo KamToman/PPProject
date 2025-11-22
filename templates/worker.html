@@ -122,10 +122,12 @@ async function processQRScan(qrData) {
         return;
     }
     
-    // Check if there's an active session for this order
+    // Check if there's an active session for this order AND stage
     const activeSessions = await getActiveSessions();
     const existingSession = activeSessions.find(session => {
-        return session.qr_data === qrData && session.worker_name === workerName;
+        return session.qr_data === qrData && 
+               session.worker_name === workerName && 
+               session.stage_id === parseInt(stageId);
     });
     
     const action = existingSession ? 'stop' : 'start';
