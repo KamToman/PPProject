@@ -168,6 +168,8 @@ async function processQRScan(qrData) {
     const action = existingSession ? 'stop' : 'start';
     console.log('Action determined:', action);
     
+    let success = false;
+    
     try {
         const response = await fetch('/api/scan', {
             method: 'POST',
@@ -186,6 +188,7 @@ async function processQRScan(qrData) {
         
         if (response.ok) {
             console.log('Scan successful:', data);
+            success = true;
             if (action === 'start') {
                 showMessage(`✅ Rozpoczęto pracę nad zleceniem ${data.order_number} na etapie ${data.stage}`, 'success');
                 showStatusBanner('green', `🟢 Praca w toku`, `Zlecenie: ${data.order_number} - Etap: ${data.stage}`);
@@ -197,21 +200,22 @@ async function processQRScan(qrData) {
         } else {
             console.error('Scan failed:', data);
             showMessage(data.error || 'Błąd podczas przetwarzania', 'error');
-            // Clear cooldown immediately on error
-            scanCooldown = false;
         }
     } catch (error) {
         console.error('Scan error:', error);
         showMessage('Błąd komunikacji z serwerem', 'error');
-        // Clear cooldown immediately on error
-        scanCooldown = false;
+    } finally {
+        // Clear cooldown - immediately on error, after delay on success
+        if (success) {
+            setTimeout(() => {
+                scanCooldown = false;
+                console.log('Cooldown cleared - ready for next scan');
+            }, SCAN_COOLDOWN_MS);
+        } else {
+            scanCooldown = false;
+            console.log('Cooldown cleared immediately due to error');
+        }
     }
-    
-    // Clear cooldown after delay
-    setTimeout(() => {
-        scanCooldown = false;
-        console.log('Cooldown cleared - ready for next scan');
-    }, SCAN_COOLDOWN_MS);
 }
 
 async function getActiveSessions() {
