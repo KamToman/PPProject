@@ -70,6 +70,8 @@ let checkInterval = null;
 let html5QrcodeScanner = null;
 let isScanning = false;
 let scanCooldown = false;
+let lastProcessedQR = '';
+let lastProcessedTime = 0;
 
 function setupEventListeners() {
     const workerNameEl = document.getElementById('workerName');
@@ -119,8 +121,17 @@ function setupEventListeners() {
 }
 
 async function processQRScan(qrData) {
+    const now = Date.now();
+    
+    // Check if this is the same QR code scanned too recently
+    if (lastProcessedQR === qrData && (now - lastProcessedTime) < SCAN_COOLDOWN_MS) {
+        console.log('Scan ignored - same QR code within cooldown period');
+        return;
+    }
+    
     // Prevent multiple rapid scans during cooldown period
     if (scanCooldown) {
+        console.log('Scan blocked - cooldown active for different QR');
         return;
     }
     
@@ -139,6 +150,9 @@ async function processQRScan(qrData) {
     
     // Set cooldown to prevent multiple scans
     scanCooldown = true;
+    lastProcessedQR = qrData;
+    lastProcessedTime = now;
+    console.log('Processing QR code:', qrData, 'at', new Date(now).toISOString());
     
     // Update currentWorkerName to ensure consistency
     currentWorkerName = workerName;
@@ -152,6 +166,7 @@ async function processQRScan(qrData) {
     });
     
     const action = existingSession ? 'stop' : 'start';
+    console.log('Action determined:', action);
     
     try {
         const response = await fetch('/api/scan', {
@@ -170,6 +185,7 @@ async function processQRScan(qrData) {
         const data = await response.json();
         
         if (response.ok) {
+            console.log('Scan successful:', data);
             if (action === 'start') {
                 showMessage(`✅ Rozpoczęto pracę nad zleceniem ${data.order_number} na etapie ${data.stage}`, 'success');
                 showStatusBanner('green', `🟢 Praca w toku`, `Zlecenie: ${data.order_number} - Etap: ${data.stage}`);
@@ -179,15 +195,22 @@ async function processQRScan(qrData) {
             }
             loadActiveSessions();
         } else {
+            console.error('Scan failed:', data);
             showMessage(data.error || 'Błąd podczas przetwarzania', 'error');
+            // Clear cooldown immediately on error
+            scanCooldown = false;
         }
     } catch (error) {
+        console.error('Scan error:', error);
         showMessage('Błąd komunikacji z serwerem', 'error');
+        // Clear cooldown immediately on error
+        scanCooldown = false;
     }
     
-    // Clear cooldown to allow next scan
+    // Clear cooldown after delay
     setTimeout(() => {
         scanCooldown = false;
+        console.log('Cooldown cleared - ready for next scan');
     }, SCAN_COOLDOWN_MS);
 }
 
