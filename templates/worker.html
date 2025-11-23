@@ -8,8 +8,11 @@
 <div class="card">
     <h2>Informacje pracownika</h2>
     <div class="form-group">
-        <label for="workerName">Imię i nazwisko:</label>
-        <input type="text" id="workerName" placeholder="Wprowadź swoje imię i nazwisko">
+        <label>Imię i nazwisko:</label>
+        <p style="padding: 0.75rem; background-color: #f8f9fa; border-radius: 5px; margin: 0.5rem 0;">
+            <strong>{{ user.full_name }}</strong>
+        </p>
+        <input type="hidden" id="workerName" value="{{ user.full_name }}">
     </div>
     
     <div class="form-group">
@@ -58,7 +61,7 @@
 <div class="card">
     <h2>Aktywne sesje pracy</h2>
     <div id="activeSessions">
-        <p class="text-muted">Wprowadź swoje imię i nazwisko aby zobaczyć aktywne sesje</p>
+        <p class="text-muted">Ładowanie aktywnych sesji...</p>
     </div>
 </div>
 
@@ -74,24 +77,16 @@ let lastProcessedQR = '';
 let lastProcessedTime = 0;
 
 function setupEventListeners() {
+    // Get worker name from logged-in user (stored in hidden field)
     const workerNameEl = document.getElementById('workerName');
-    if (workerNameEl) {
-        workerNameEl.addEventListener('input', (e) => {
-            currentWorkerName = e.target.value;
-            if (currentWorkerName) {
-                loadActiveSessions();
-                if (!checkInterval) {
-                    checkInterval = setInterval(loadActiveSessions, 30000); // Check every 30 seconds
-                }
-            } else {
-                if (checkInterval) {
-                    clearInterval(checkInterval);
-                    checkInterval = null;
-                }
-                document.getElementById('activeSessions').innerHTML = 
-                    '<p class="text-muted">Wprowadź swoje imię i nazwisko aby zobaczyć aktywne sesje</p>';
-            }
-        });
+    if (workerNameEl && workerNameEl.value) {
+        currentWorkerName = workerNameEl.value;
+        // Load active sessions immediately
+        loadActiveSessions();
+        // Set up periodic refresh of active sessions
+        if (!checkInterval) {
+            checkInterval = setInterval(loadActiveSessions, 30000); // Check every 30 seconds
+        }
     }
     
     // Allow Enter key on QR input for quick scanning
@@ -139,7 +134,7 @@ async function processQRScan(qrData) {
     const stageId = document.getElementById('stageSelect').value;
     
     if (!workerName) {
-        showMessage('Wprowadź imię i nazwisko przed skanowaniem', 'error');
+        showMessage('Błąd: brak informacji o pracowniku', 'error');
         return;
     }
     
