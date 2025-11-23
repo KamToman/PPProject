@@ -392,6 +392,7 @@ def get_active_sessions():
             'qr_data': f'ORDER:{log.order.order_number}',
             'stage_id': log.stage_id,
             'stage_name': log.stage.name,
+            'worker_name': log.worker_name,  # Add worker_name to response
             'start_time': log.start_time.isoformat()
         })
     

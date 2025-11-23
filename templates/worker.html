@@ -159,13 +159,19 @@ async function processQRScan(qrData) {
     
     // Check if there's an active session for this order AND stage
     const activeSessions = await getActiveSessionsForWorker(workerName);
+    console.log('Active sessions for worker:', activeSessions);
+    console.log('Looking for QR:', qrData, 'Worker:', workerName, 'Stage:', stageId, '(as int:', parseInt(stageId), ')');
+    
     const existingSession = activeSessions.find(session => {
-        return session.qr_data === qrData && 
-               session.worker_name === workerName && 
-               session.stage_id === parseInt(stageId);
+        const matches = session.qr_data === qrData && 
+                       session.worker_name === workerName && 
+                       session.stage_id === parseInt(stageId);
+        console.log('Checking session:', session, 'Matches:', matches);
+        return matches;
     });
     
     const action = existingSession ? 'stop' : 'start';
+    console.log('Existing session found:', existingSession);
     console.log('Action determined:', action);
     
     let success = false;
