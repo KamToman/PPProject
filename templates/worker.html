@@ -28,7 +28,8 @@
     <p class="text-muted">Zeskanuj kod QR aby automatycznie rozpocząć lub zakończyć pracę</p>
     
     <!-- Visual Status Indicator Banner -->
-    <div id="statusBanner" style="display: none; padding: 1.5rem; margin: 1rem 0; border-radius: 10px; text-align: center; font-size: 1.2rem; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+    <div id="statusBanner" style="display: none; padding: 1.5rem; margin: 1rem 0; border-radius: 10px; text-align: center; font-size: 1.2rem; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.2); position: relative;">
+        <button id="dismissBanner" style="position: absolute; top: 0.5rem; right: 0.5rem; background: transparent; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0.25rem 0.5rem; opacity: 0.8;" onclick="document.getElementById('statusBanner').style.display='none';">&times;</button>
         <div id="statusText"></div>
         <div id="statusDetails" style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: normal;"></div>
     </div>
@@ -62,10 +63,13 @@
 </div>
 
 <script>
+const SCAN_COOLDOWN_MS = 3000; // 3 seconds between scans
+
 let currentWorkerName = '';
 let checkInterval = null;
 let html5QrcodeScanner = null;
 let isScanning = false;
+let scanCooldown = false;
 
 function setupEventListeners() {
     const workerNameEl = document.getElementById('workerName');
@@ -115,6 +119,11 @@ function setupEventListeners() {
 }
 
 async function processQRScan(qrData) {
+    // Prevent multiple rapid scans during cooldown period
+    if (scanCooldown) {
+        return;
+    }
+    
     const workerName = document.getElementById('workerName').value.trim();
     const stageId = document.getElementById('stageSelect').value;
     
@@ -127,6 +136,9 @@ async function processQRScan(qrData) {
         showMessage('Wybierz etap produkcji przed skanowaniem', 'error');
         return;
     }
+    
+    // Set cooldown to prevent multiple scans
+    scanCooldown = true;
     
     // Update currentWorkerName to ensure consistency
     currentWorkerName = workerName;
@@ -172,6 +184,11 @@ async function processQRScan(qrData) {
     } catch (error) {
         showMessage('Błąd komunikacji z serwerem', 'error');
     }
+    
+    // Clear cooldown to allow next scan
+    setTimeout(() => {
+        scanCooldown = false;
+    }, SCAN_COOLDOWN_MS);
 }
 
 async function getActiveSessions() {
@@ -250,10 +267,10 @@ function showStatusBanner(color, mainText, detailsText) {
     statusDetails.textContent = detailsText;
     banner.style.display = 'block';
     
-    // Hide banner after 8 seconds
+    // Hide banner after 15 seconds (increased from 8 seconds)
     setTimeout(() => {
         banner.style.display = 'none';
-    }, 8000);
+    }, 15000);
 }
 
 function startQRScanner() {
