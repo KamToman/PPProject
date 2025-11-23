@@ -69,7 +69,6 @@ let currentWorkerName = '';
 let checkInterval = null;
 let html5QrcodeScanner = null;
 let isScanning = false;
-let lastScannedCode = '';
 let scanCooldown = false;
 
 function setupEventListeners() {
@@ -140,7 +139,6 @@ async function processQRScan(qrData) {
     
     // Set cooldown to prevent multiple scans
     scanCooldown = true;
-    lastScannedCode = qrData;
     
     // Update currentWorkerName to ensure consistency
     currentWorkerName = workerName;
@@ -190,7 +188,6 @@ async function processQRScan(qrData) {
     // Clear cooldown to allow next scan
     setTimeout(() => {
         scanCooldown = false;
-        lastScannedCode = '';
     }, SCAN_COOLDOWN_MS);
 }
 
