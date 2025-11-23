@@ -27,6 +27,12 @@
     <h2>Skanuj kod QR</h2>
     <p class="text-muted">Zeskanuj kod QR aby automatycznie rozpocząć lub zakończyć pracę</p>
     
+    <!-- Visual Status Indicator Banner -->
+    <div id="statusBanner" style="display: none; padding: 1.5rem; margin: 1rem 0; border-radius: 10px; text-align: center; font-size: 1.2rem; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+        <div id="statusText"></div>
+        <div id="statusDetails" style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: normal;"></div>
+    </div>
+    
     <div class="form-group">
         <button id="startScanBtn" class="btn btn-primary">📷 Rozpocznij skanowanie</button>
         <button id="stopScanBtn" class="btn btn-danger" style="display: none;">⏹️ Zatrzymaj skanowanie</button>
@@ -154,8 +160,10 @@ async function processQRScan(qrData) {
         if (response.ok) {
             if (action === 'start') {
                 showMessage(`✅ Rozpoczęto pracę nad zleceniem ${data.order_number} na etapie ${data.stage}`, 'success');
+                showStatusBanner('green', `🟢 Praca w toku`, `Zlecenie: ${data.order_number} - Etap: ${data.stage}`);
             } else {
                 showMessage(`⏹️ Zakończono pracę. Czas trwania: ${data.duration_minutes} minut`, 'success');
+                showStatusBanner('red', `🔴 Praca zakończona`, `Czas trwania: ${data.duration_minutes} minut`);
             }
             loadActiveSessions();
         } else {
@@ -223,6 +231,29 @@ function showMessage(msg, type) {
     setTimeout(() => {
         messageDiv.style.display = 'none';
     }, 5000);
+}
+
+function showStatusBanner(color, mainText, detailsText) {
+    const banner = document.getElementById('statusBanner');
+    const statusText = document.getElementById('statusText');
+    const statusDetails = document.getElementById('statusDetails');
+    
+    if (color === 'green') {
+        banner.style.backgroundColor = '#27ae60';
+        banner.style.color = 'white';
+    } else if (color === 'red') {
+        banner.style.backgroundColor = '#e74c3c';
+        banner.style.color = 'white';
+    }
+    
+    statusText.textContent = mainText;
+    statusDetails.textContent = detailsText;
+    banner.style.display = 'block';
+    
+    // Hide banner after 8 seconds
+    setTimeout(() => {
+        banner.style.display = 'none';
+    }, 8000);
 }
 
 function startQRScanner() {
