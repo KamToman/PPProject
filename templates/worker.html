@@ -63,6 +63,8 @@
 </div>
 
 <script>
+const SCAN_COOLDOWN_MS = 3000; // 3 seconds between scans
+
 let currentWorkerName = '';
 let checkInterval = null;
 let html5QrcodeScanner = null;
@@ -118,13 +120,8 @@ function setupEventListeners() {
 }
 
 async function processQRScan(qrData) {
-    // Prevent multiple rapid scans of the same code
+    // Prevent multiple rapid scans during cooldown period
     if (scanCooldown) {
-        return;
-    }
-    
-    // Check if this is the same code as last scan within cooldown period
-    if (lastScannedCode === qrData) {
         return;
     }
     
@@ -190,11 +187,11 @@ async function processQRScan(qrData) {
         showMessage('Błąd komunikacji z serwerem', 'error');
     }
     
-    // Clear cooldown after 3 seconds to allow next scan
+    // Clear cooldown to allow next scan
     setTimeout(() => {
         scanCooldown = false;
         lastScannedCode = '';
-    }, 3000);
+    }, SCAN_COOLDOWN_MS);
 }
 
 async function getActiveSessions() {
