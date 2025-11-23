@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}System Pomiaru Czasów Produkcji{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="navbar-brand">System Pomiaru Czasów Produkcji</h1>
+            <ul class="navbar-nav">
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+                {% if user %}
+                    {% if user.role == 'admin' %}
+                        <li><a href="{{ url_for('designer_panel') }}">Panel Projektanta</a></li>
+                        <li><a href="{{ url_for('worker_panel') }}">Panel Pracownika</a></li>
+                        <li><a href="{{ url_for('manager_panel') }}">Panel Kierownika</a></li>
+                        <li><a href="{{ url_for('admin_panel') }}">Panel Admina</a></li>
+                    {% elif user.role == 'designer' %}
+                        <li><a href="{{ url_for('designer_panel') }}">Panel Projektanta</a></li>
+                    {% elif user.role == 'worker' %}
+                        <li><a href="{{ url_for('worker_panel') }}">Panel Pracownika</a></li>
+                    {% elif user.role == 'manager' %}
+                        <li><a href="{{ url_for('manager_panel') }}">Panel Kierownika</a></li>
+                    {% endif %}
+                {% endif %}
+                <li style="margin-left: auto;">
+                    <span style="color: white; margin-right: 1rem;">👤 {{ user.full_name if user else 'Gość' }} ({{ user.role if user else 'brak' }})</span>
+                    <a href="{{ url_for('logout') }}" style="background-color: #e74c3c; padding: 0.5rem 1rem; border-radius: 5px;">Wyloguj</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div style="margin-top: 1rem;">
+                    {% for category, message in messages %}
+                        <div class="message {{ category }}" style="display: block;">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 System Pomiaru Czasów Produkcji</p>
+        </div>
+    </footer>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

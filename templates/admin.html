@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Admina{% endblock %}
+
+{% block content %}
+<h1>Panel Administracyjny</h1>
+
+<div class="card">
+    <h2>Dodaj nowego użytkownika</h2>
+    <form id="userForm">
+        <div class="form-group">
+            <label for="username">Nazwa użytkownika:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Hasło:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="full_name">Imię i nazwisko:</label>
+            <input type="text" id="full_name" name="full_name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="role">Rola:</label>
+            <select id="role" name="role" required>
+                <option value="">Wybierz rolę</option>
+                <option value="admin">Administrator</option>
+                <option value="designer">Projektant</option>
+                <option value="worker">Pracownik</option>
+                <option value="manager">Kierownik</option>
+            </select>
+        </div>
+        
+        <div class="form-group" id="stagesGroup" style="display: none;">
+            <label>Przypisane procesy/etapy (dla pracowników):</label>
+            <div id="stagesList">
+                {% for stage in stages %}
+                <div style="margin-bottom: 0.5rem;">
+                    <input type="checkbox" id="stage_{{ stage.id }}" name="stages" value="{{ stage.id }}">
+                    <label for="stage_{{ stage.id }}" style="display: inline; font-weight: normal;">{{ stage.name }}</label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Dodaj użytkownika</button>
+    </form>
+    
+    <div id="message" class="message"></div>
+</div>
+
+<div class="card">
+    <h2>Lista użytkowników</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nazwa użytkownika</th>
+                <th>Imię i nazwisko</th>
+                <th>Rola</th>
+                <th>Przypisane procesy</th>
+                <th>Status</th>
+                <th>Akcje</th>
+            </tr>
+        </thead>
+        <tbody id="usersTableBody">
+            {% for u in users %}
+            <tr data-user-id="{{ u.id }}">
+                <td>{{ u.username }}</td>
+                <td>{{ u.full_name }}</td>
+                <td>
+                    <span class="role-badge role-{{ u.role }}">{{ u.role }}</span>
+                </td>
+                <td>
+                    {% if u.assigned_stages %}
+                        {% for stage in u.assigned_stages %}
+                            <span class="stage-tag">{{ stage.name }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-muted">Brak</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if u.is_active %}
+                        <span style="color: green;">●</span> Aktywny
+                    {% else %}
+                        <span style="color: red;">●</span> Nieaktywny
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-small" onclick="editUser({{ u.id }})">Edytuj</button>
+                    <button class="btn btn-small btn-danger" onclick="deleteUser({{ u.id }})">Usuń</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Zarządzanie procesami produkcji</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nazwa procesu</th>
+                <th>Opis</th>
+                <th>Liczba przypisanych pracowników</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stage in stages %}
+            <tr>
+                <td>{{ stage.name }}</td>
+                <td>{{ stage.description }}</td>
+                <td>{{ stage.assigned_users.count() }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+// Show/hide stages selection based on role
+document.getElementById('role').addEventListener('change', function() {
+    const stagesGroup = document.getElementById('stagesGroup');
+    if (this.value === 'worker') {
+        stagesGroup.style.display = 'block';
+    } else {
+        stagesGroup.style.display = 'none';
+    }
+});
+
+// Submit form to create user
+document.getElementById('userForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = {
+        username: formData.get('username'),
+        password: formData.get('password'),
+        full_name: formData.get('full_name'),
+        role: formData.get('role'),
+        stage_ids: []
+    };
+    
+    // Get selected stages
+    if (data.role === 'worker') {
+        const checkboxes = document.querySelectorAll('input[name="stages"]:checked');
+        data.stage_ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    }
+    
+    try {
+        const response = await fetch('/api/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showMessage('Użytkownik został dodany pomyślnie!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showMessage(result.error || 'Błąd podczas dodawania użytkownika', 'error');
+        }
+    } catch (error) {
+        showMessage('Błąd komunikacji z serwerem', 'error');
+    }
+});
+
+function showMessage(msg, type) {
+    const messageDiv = document.getElementById('message');
+    messageDiv.textContent = msg;
+    messageDiv.className = `message ${type}`;
+    messageDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        messageDiv.style.display = 'none';
+    }, 5000);
+}
+
+async function deleteUser(userId) {
+    if (!confirm('Czy na pewno chcesz usunąć tego użytkownika?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showMessage('Użytkownik został usunięty', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showMessage('Błąd podczas usuwania użytkownika', 'error');
+        }
+    } catch (error) {
+        showMessage('Błąd komunikacji z serwerem', 'error');
+    }
+}
+
+function editUser(userId) {
+    // Simplified edit - in production you'd have a modal or edit page
+    alert('Funkcja edycji użytkownika - w przygotowaniu. Możesz usunąć użytkownika i dodać go ponownie z nowymi ustawieniami.');
+}
+</script>
+
+<style>
+.role-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.role-admin {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.role-designer {
+    background-color: #3498db;
+    color: white;
+}
+
+.role-worker {
+    background-color: #27ae60;
+    color: white;
+}
+
+.role-manager {
+    background-color: #f39c12;
+    color: white;
+}
+
+.stage-tag {
+    display: inline-block;
+    background-color: #ecf0f1;
+    padding: 0.2rem 0.5rem;
+    border-radius: 5px;
+    margin-right: 0.5rem;
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}

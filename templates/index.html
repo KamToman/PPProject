@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero">
+    <h1>System Pomiaru Czasów Produkcji</h1>
+    <p>Aplikacja do zarządzania czasami procesów produkcyjnych</p>
+</div>
+
+<div class="panels-grid">
+    {% if user.role == 'admin' %}
+        <a href="{{ url_for('designer_panel') }}" class="panel-card" style="text-decoration: none; color: inherit;">
+            <h2>Panel Projektanta</h2>
+            <p>Twórz zlecenia produkcyjne i generuj kody QR dla każdego zlecenia.</p>
+        </a>
+        
+        <a href="{{ url_for('worker_panel') }}" class="panel-card" style="text-decoration: none; color: inherit;">
+            <h2>Panel Pracownika</h2>
+            <p>Skanuj kody QR i rejestruj czas pracy na poszczególnych etapach produkcji.</p>
+        </a>
+        
+        <a href="{{ url_for('manager_panel') }}" class="panel-card" style="text-decoration: none; color: inherit;">
+            <h2>Panel Kierownika</h2>
+            <p>Przeglądaj raporty i analizy czasów produkcji oraz wydajności pracowników.</p>
+        </a>
+        
+        <a href="{{ url_for('admin_panel') }}" class="panel-card" style="text-decoration: none; color: inherit;">
+            <h2>Panel Admina</h2>
+            <p>Zarządzaj użytkownikami, rolami i procesami produkcyjnymi.</p>
+        </a>
+    {% elif user.role == 'designer' %}
+        <a href="{{ url_for('designer_panel') }}" class="panel-card" style="text-decoration: none; color: inherit;">
+            <h2>Panel Projektanta</h2>
+            <p>Twórz zlecenia produkcyjne i generuj kody QR dla każdego zlecenia.</p>
+        </a>
+    {% elif user.role == 'worker' %}
+        <a href="{{ url_for('worker_panel') }}" class="panel-card" style="text-decoration: none; color: inherit;">
+            <h2>Panel Pracownika</h2>
+            <p>Skanuj kody QR i rejestruj czas pracy na poszczególnych etapach produkcji.</p>
+        </a>
+    {% elif user.role == 'manager' %}
+        <a href="{{ url_for('manager_panel') }}" class="panel-card" style="text-decoration: none; color: inherit;">
+            <h2>Panel Kierownika</h2>
+            <p>Przeglądaj raporty i analizy czasów produkcji oraz wydajności pracowników.</p>
+        </a>
+    {% endif %}
+</div>
+{% endblock %}

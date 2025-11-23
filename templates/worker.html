@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Pracownika{% endblock %}
+
+{% block content %}
+<h1>Panel Pracownika</h1>
+
+<div class="card">
+    <h2>Informacje pracownika</h2>
+    <div class="form-group">
+        <label for="workerName">Imię i nazwisko:</label>
+        <input type="text" id="workerName" placeholder="Wprowadź swoje imię i nazwisko">
+    </div>
+    
+    <div class="form-group">
+        <label for="stageSelect">Etap produkcji:</label>
+        <select id="stageSelect">
+            <option value="">Wybierz etap</option>
+            {% for stage in stages %}
+            <option value="{{ stage.id }}">{{ stage.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Skanuj kod QR</h2>
+    <p class="text-muted">Zeskanuj kod QR aby automatycznie rozpocząć lub zakończyć pracę</p>
+    
+    <!-- Visual Status Indicator Banner -->
+    <div id="statusBanner" style="display: none; padding: 1.5rem; margin: 1rem 0; border-radius: 10px; text-align: center; font-size: 1.2rem; font-weight: bold; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+        <div id="statusText"></div>
+        <div id="statusDetails" style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: normal;"></div>
+    </div>
+    
+    <div class="form-group">
+        <button id="startScanBtn" class="btn btn-primary">📷 Rozpocznij skanowanie</button>
+        <button id="stopScanBtn" class="btn btn-danger" style="display: none;">⏹️ Zatrzymaj skanowanie</button>
+    </div>
+    
+    <div id="qrReader" style="margin-top: 1rem;"></div>
+    
+    <div id="message" class="message"></div>
+    
+    <div style="margin-top: 1rem; padding: 0.75rem; background-color: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
+        <strong>💡 Wskazówki dotyczące skanowania:</strong>
+        <ul style="margin: 0.5rem 0 0 1.5rem; font-size: 0.9rem;">
+            <li>Upewnij się, że kod QR jest dobrze oświetlony</li>
+            <li>Trzymaj kod QR w centrum niebieskiego kwadratu na ekranie</li>
+            <li>Trzymaj kamerę stabilnie i w odległości 10-30 cm od kodu</li>
+            <li>Jeśli nie skanuje, spróbuj zwiększyć lub zmniejszyć odległość</li>
+            <li>Upewnij się, że kod QR nie jest rozmazany ani uszkodzony</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Aktywne sesje pracy</h2>
+    <div id="activeSessions">
+        <p class="text-muted">Wprowadź swoje imię i nazwisko aby zobaczyć aktywne sesje</p>
+    </div>
+</div>
+
+<script>
+let currentWorkerName = '';
+let checkInterval = null;
+let html5QrcodeScanner = null;
+let isScanning = false;
+
+function setupEventListeners() {
+    const workerNameEl = document.getElementById('workerName');
+    if (workerNameEl) {
+        workerNameEl.addEventListener('input', (e) => {
+            currentWorkerName = e.target.value;
+            if (currentWorkerName) {
+                loadActiveSessions();
+                if (!checkInterval) {
+                    checkInterval = setInterval(loadActiveSessions, 30000); // Check every 30 seconds
+                }
+            } else {
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                    checkInterval = null;
+                }
+                document.getElementById('activeSessions').innerHTML = 
+                    '<p class="text-muted">Wprowadź swoje imię i nazwisko aby zobaczyć aktywne sesje</p>';
+            }
+        });
+    }
+    
+    // Allow Enter key on QR input for quick scanning
+    const qrInputEl = document.getElementById('qrInput');
+    if (qrInputEl) {
+        qrInputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('startBtn').click();
+            }
+        });
+    }
+    
+    // Camera QR scanning functionality
+    const startScanBtnEl = document.getElementById('startScanBtn');
+    if (startScanBtnEl) {
+        startScanBtnEl.addEventListener('click', () => {
+            startQRScanner();
+        });
+    }
+    
+    const stopScanBtnEl = document.getElementById('stopScanBtn');
+    if (stopScanBtnEl) {
+        stopScanBtnEl.addEventListener('click', () => {
+            stopQRScanner();
+        });
+    }
+}
+
+async function processQRScan(qrData) {
+    const workerName = document.getElementById('workerName').value.trim();
+    const stageId = document.getElementById('stageSelect').value;
+    
+    if (!workerName) {
+        showMessage('Wprowadź imię i nazwisko przed skanowaniem', 'error');
+        return;
+    }
+    
+    if (!stageId) {
+        showMessage('Wybierz etap produkcji przed skanowaniem', 'error');
+        return;
+    }
+    
+    // Update currentWorkerName to ensure consistency
+    currentWorkerName = workerName;
+    
+    // Check if there's an active session for this order AND stage
+    const activeSessions = await getActiveSessionsForWorker(workerName);
+    const existingSession = activeSessions.find(session => {
+        return session.qr_data === qrData && 
+               session.worker_name === workerName && 
+               session.stage_id === parseInt(stageId);
+    });
+    
+    const action = existingSession ? 'stop' : 'start';
+    
+    try {
+        const response = await fetch('/api/scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                qr_data: qrData,
+                worker_name: workerName,
+                stage_id: stageId,
+                action: action
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            if (action === 'start') {
+                showMessage(`✅ Rozpoczęto pracę nad zleceniem ${data.order_number} na etapie ${data.stage}`, 'success');
+                showStatusBanner('green', `🟢 Praca w toku`, `Zlecenie: ${data.order_number} - Etap: ${data.stage}`);
+            } else {
+                showMessage(`⏹️ Zakończono pracę. Czas trwania: ${data.duration_minutes} minut`, 'success');
+                showStatusBanner('red', `🔴 Praca zakończona`, `Czas trwania: ${data.duration_minutes} minut`);
+            }
+            loadActiveSessions();
+        } else {
+            showMessage(data.error || 'Błąd podczas przetwarzania', 'error');
+        }
+    } catch (error) {
+        showMessage('Błąd komunikacji z serwerem', 'error');
+    }
+}
+
+async function getActiveSessions() {
+    if (!currentWorkerName) return [];
+    return await getActiveSessionsForWorker(currentWorkerName);
+}
+
+async function getActiveSessionsForWorker(workerName) {
+    if (!workerName) return [];
+    
+    try {
+        const response = await fetch(`/api/worker/active-sessions?worker_name=${encodeURIComponent(workerName)}`);
+        if (response.ok) {
+            return await response.json();
+        }
+    } catch (error) {
+        console.error('Error fetching active sessions:', error);
+    }
+    return [];
+}
+
+async function loadActiveSessions() {
+    if (!currentWorkerName) return;
+    
+    try {
+        const response = await fetch(`/api/worker/active-sessions?worker_name=${encodeURIComponent(currentWorkerName)}`);
+        const sessions = await response.json();
+        
+        const container = document.getElementById('activeSessions');
+        
+        if (sessions.length === 0) {
+            container.innerHTML = '<p class="text-muted">Brak aktywnych sesji pracy</p>';
+        } else {
+            let html = '<table class="table"><thead><tr><th>Zlecenie</th><th>Etap</th><th>Czas rozpoczęcia</th></tr></thead><tbody>';
+            sessions.forEach(session => {
+                const startTime = new Date(session.start_time).toLocaleString('pl-PL');
+                html += `<tr>
+                    <td>${session.order_number}</td>
+                    <td>${session.stage_name}</td>
+                    <td>${startTime}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+    } catch (error) {
+        console.error('Error loading active sessions:', error);
+    }
+}
+
+function showMessage(msg, type) {
+    const messageDiv = document.getElementById('message');
+    messageDiv.textContent = msg;
+    messageDiv.className = `message ${type}`;
+    messageDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        messageDiv.style.display = 'none';
+    }, 5000);
+}
+
+function showStatusBanner(color, mainText, detailsText) {
+    const banner = document.getElementById('statusBanner');
+    const statusText = document.getElementById('statusText');
+    const statusDetails = document.getElementById('statusDetails');
+    
+    if (color === 'green') {
+        banner.style.backgroundColor = '#27ae60';
+        banner.style.color = 'white';
+    } else if (color === 'red') {
+        banner.style.backgroundColor = '#e74c3c';
+        banner.style.color = 'white';
+    }
+    
+    statusText.textContent = mainText;
+    statusDetails.textContent = detailsText;
+    banner.style.display = 'block';
+    
+    // Hide banner after 8 seconds
+    setTimeout(() => {
+        banner.style.display = 'none';
+    }, 8000);
+}
+
+function startQRScanner() {
+    if (isScanning) return;
+    
+    // Check if Html5Qrcode library is loaded
+    if (typeof Html5Qrcode === 'undefined') {
+        showMessage('Biblioteka skanowania nie została załadowana. Sprawdź połączenie internetowe i odśwież stronę.', 'error');
+        return;
+    }
+    
+    const qrReaderDiv = document.getElementById('qrReader');
+    qrReaderDiv.style.display = 'block';
+    
+    html5QrcodeScanner = new Html5Qrcode("qrReader");
+    
+    const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+        disableFlip: false  // Try both normal and flipped orientations
+    };
+    
+    html5QrcodeScanner.start(
+        { facingMode: "environment" }, // Use back camera on mobile
+        config,
+        (decodedText, decodedResult) => {
+            // QR code successfully scanned - automatically process it
+            processQRScan(decodedText);
+        },
+        (errorMessage) => {
+            // Scanning error or no QR code detected - this is normal, ignore
+        }
+    ).then(() => {
+        isScanning = true;
+        document.getElementById('startScanBtn').style.display = 'none';
+        document.getElementById('stopScanBtn').style.display = 'inline-block';
+    }).catch((err) => {
+        let errorMsg = 'Błąd uruchamiania kamery: ';
+        const errMessage = err.message || '';
+        
+        if (err.name === 'NotReadableError' || errMessage.includes('NotReadableError')) {
+            errorMsg += 'Kamera jest już używana przez inną aplikację lub kartę przeglądarki. Zamknij inne aplikacje używające kamery i odśwież stronę.';
+        } else if (err.name === 'NotAllowedError' || errMessage.includes('Permission denied')) {
+            errorMsg += 'Brak dostępu do kamery. Zezwól na użycie kamery w ustawieniach przeglądarki i odśwież stronę.';
+        } else if (err.name === 'NotFoundError' || errMessage.includes('Requested device not found')) {
+            errorMsg += 'Nie znaleziono kamery. Upewnij się, że urządzenie ma podłączoną kamerę.';
+        } else {
+            errorMsg += (err.message || err);
+        }
+        
+        showMessage(errorMsg, 'error');
+        qrReaderDiv.style.display = 'none';
+        
+        // Reset scanner state
+        if (html5QrcodeScanner) {
+            try {
+                html5QrcodeScanner.clear();
+            } catch (clearErr) {
+                console.error('Error clearing scanner:', clearErr);
+            }
+            html5QrcodeScanner = null;
+        }
+        isScanning = false;
+        
+        // Show start button to allow manual retry
+        document.getElementById('startScanBtn').style.display = 'inline-block';
+        document.getElementById('stopScanBtn').style.display = 'none';
+    });
+}
+
+function stopQRScanner() {
+    if (!isScanning || !html5QrcodeScanner) return;
+    
+    html5QrcodeScanner.stop().then(() => {
+        resetScannerUI();
+    }).catch((err) => {
+        console.error('Error stopping scanner:', err);
+        // Reset UI even if stopping fails
+        resetScannerUI();
+    });
+}
+
+function resetScannerUI() {
+    if (html5QrcodeScanner) {
+        try {
+            html5QrcodeScanner.clear();
+        } catch (err) {
+            console.error('Error clearing scanner:', err);
+        }
+        html5QrcodeScanner = null;
+    }
+    isScanning = false;
+    document.getElementById('qrReader').style.display = 'block';
+    document.getElementById('startScanBtn').style.display = 'inline-block';
+    document.getElementById('stopScanBtn').style.display = 'none';
+}
+
+// Auto-start scanner after library loads with delay to ensure permissions
+function initScanner() {
+    if (typeof Html5Qrcode !== 'undefined') {
+        // Hide start button initially while auto-starting
+        document.getElementById('startScanBtn').style.display = 'none';
+        
+        // Add a small delay before auto-starting to allow page to fully load
+        setTimeout(() => {
+            startQRScanner();
+        }, 500);
+    } else {
+        // Show start button if library takes too long to load
+        setTimeout(() => {
+            if (typeof Html5Qrcode === 'undefined') {
+                document.getElementById('startScanBtn').style.display = 'inline-block';
+                showMessage('Ładowanie biblioteki skanowania... Jeśli trwa to długo, sprawdź połączenie internetowe.', 'info');
+            }
+        }, 3000);
+        
+        // Retry after a short delay if library not loaded yet
+        setTimeout(initScanner, 100);
+    }
+}
+
+// Initialize everything when DOM is ready
+function initializePage() {
+    setupEventListeners();
+    initScanner();
+}
+
+// Start when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePage);
+} else {
+    initializePage();
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
