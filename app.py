@@ -15,6 +15,10 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
 
 db.init_app(app)
 
+# ========== Constants for Project Data Validation ==========
+VALID_SYSTEMS = ['SLIM', 'JENSEN', 'LITE', 'OTTOSTUM', 'RPTECHNIK', 'W10']
+VALID_HANDLE_STYLES = ['1', '2', '3', '4', '5', 'kaseta']
+
 
 # ========== Authentication Decorators ==========
 
@@ -235,14 +239,12 @@ def create_order():
         return jsonify({'error': 'Order number is required'}), 400
     
     # Validate system value
-    valid_systems = ['SLIM', 'JENSEN', 'LITE', 'OTTOSTUM', 'RPTECHNIK', 'W10']
-    if system and system not in valid_systems:
-        return jsonify({'error': f'Invalid system. Must be one of: {", ".join(valid_systems)}'}), 400
+    if system and system not in VALID_SYSTEMS:
+        return jsonify({'error': f'Invalid system. Must be one of: {", ".join(VALID_SYSTEMS)}'}), 400
     
     # Validate handle_style value
-    valid_handle_styles = ['1', '2', '3', '4', '5', 'kaseta']
-    if handle_style and handle_style not in valid_handle_styles:
-        return jsonify({'error': f'Invalid handle style. Must be one of: {", ".join(valid_handle_styles)}'}), 400
+    if handle_style and handle_style not in VALID_HANDLE_STYLES:
+        return jsonify({'error': f'Invalid handle style. Must be one of: {", ".join(VALID_HANDLE_STYLES)}'}), 400
     
     # Validate welding_frames_qty (1-15)
     if welding_frames_qty is not None:
