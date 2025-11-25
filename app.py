@@ -663,6 +663,25 @@ def manage_stage(stage_id):
 with app.app_context():
     db.create_all()
     
+    # Add new columns to orders table if they don't exist (for existing databases)
+    from sqlalchemy import inspect, text
+    inspector = inspect(db.engine)
+    if 'orders' in inspector.get_table_names():
+        existing_columns = [col['name'] for col in inspector.get_columns('orders')]
+        new_columns = [
+            ('system', 'VARCHAR(20)'),
+            ('handle_style', 'VARCHAR(10)'),
+            ('welding_frames_qty', 'INTEGER'),
+            ('glazing_frames_qty', 'INTEGER'),
+            ('szpros_complication', 'INTEGER')
+        ]
+        for col_name, col_type in new_columns:
+            if col_name not in existing_columns:
+                with db.engine.connect() as conn:
+                    conn.execute(text(f'ALTER TABLE orders ADD COLUMN {col_name} {col_type}'))
+                    conn.commit()
+                print(f"Added column '{col_name}' to orders table")
+    
     # Create default admin user if no users exist
     if User.query.count() == 0:
         admin = User(
