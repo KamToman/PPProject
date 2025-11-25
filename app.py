@@ -541,6 +541,44 @@ def manage_stages():
         }), 201
 
 
+@app.route('/api/stages/<int:stage_id>', methods=['GET', 'PUT', 'DELETE'])
+def manage_stage(stage_id):
+    """Get, update, or delete a specific stage"""
+    stage = ProductionStage.query.get_or_404(stage_id)
+    
+    if request.method == 'GET':
+        return jsonify({
+            'id': stage.id,
+            'name': stage.name,
+            'description': stage.description,
+            'assigned_workers': stage.assigned_users.count()
+        }), 200
+    
+    elif request.method == 'PUT':
+        data = request.json
+        if 'name' in data:
+            stage.name = data['name']
+        if 'description' in data:
+            stage.description = data['description']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'id': stage.id,
+            'name': stage.name,
+            'description': stage.description
+        }), 200
+    
+    elif request.method == 'DELETE':
+        # Check if stage has time logs
+        if stage.time_logs:
+            return jsonify({'error': 'Nie można usunąć procesu, który ma powiązane wpisy czasowe'}), 400
+        
+        db.session.delete(stage)
+        db.session.commit()
+        return jsonify({'message': 'Proces został usunięty'}), 200
+
+
 # Initialize database
 with app.app_context():
     db.create_all()
