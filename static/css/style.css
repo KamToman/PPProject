@@ -125,6 +125,7 @@ main {
 }
 
 .form-group input[type="text"],
+.form-group input[type="password"],
 .form-group textarea,
 .form-group select {
     width: 100%;
@@ -136,6 +137,7 @@ main {
 }
 
 .form-group input[type="text"]:focus,
+.form-group input[type="password"]:focus,
 .form-group textarea:focus,
 .form-group select:focus {
     outline: none;
