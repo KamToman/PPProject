@@ -389,3 +389,15 @@ footer {
 #qrReader canvas {
     display: none;
 }
+
+/* Right-side user section */
+.nav-user {
+    margin-left: auto !important;   /* pushes to far right */
+    display: flex;
+    align-items: center;
+    gap: 1rem;                      /* spacing between name + button */
+}
+
+.nav-username {
+    color: white;
+}

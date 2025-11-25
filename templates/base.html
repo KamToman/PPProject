@@ -27,9 +27,9 @@
                         <li><a href="{{ url_for('manager_panel') }}">Panel Kierownika</a></li>
                     {% endif %}
                 {% endif %}
-                <li style="margin-left: auto;">
-                    <span style="color: white; margin-right: 1rem;">👤 {{ user.full_name if user else 'Gość' }} ({{ user.role if user else 'brak' }})</span>
-                    <a href="{{ url_for('logout') }}" style="background-color: #e74c3c; padding: 0.5rem 1rem; border-radius: 5px;">Wyloguj</a>
+                <li class="nav-user">
+                     <span class="nav-username">👤 {{ user.full_name if user else 'Gość' }} ({{ user.role if user else 'brak' }})</span>
+                     <a href="{{ url_for('logout') }}" class="btn-danger btn-small">Wyloguj</a>
                 </li>
             </ul>
         </div>
