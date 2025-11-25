@@ -6,6 +6,7 @@ import qrcode
 import io
 import os
 import secrets
+from openpyxl import Workbook
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///production.db'
@@ -579,6 +580,193 @@ def get_stage_efficiency_report():
         })
     
     return jsonify(report_data), 200
+
+
+# ========== Export Reports to XLSX ==========
+
+@app.route('/api/reports/order-times/export')
+@role_required('admin', 'manager')
+def export_order_times_report():
+    """Export order times report to XLSX file"""
+    order_id = request.args.get('order_id', type=int)
+    system = request.args.get('system')
+    handle_style = request.args.get('handle_style')
+    welding_frames_min = request.args.get('welding_frames_min', type=int)
+    glazing_frames_min = request.args.get('glazing_frames_min', type=int)
+    szpros_complication = request.args.get('szpros_complication', type=int)
+    
+    # Calculate duration in days (SQLite Julian day difference)
+    duration_days = db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
+    
+    query = db.session.query(
+        Order.order_number,
+        Order.description,
+        Order.system,
+        Order.handle_style,
+        Order.welding_frames_qty,
+        Order.glazing_frames_qty,
+        Order.szpros_complication,
+        ProductionStage.name.label('stage_name'),
+        db.func.count(TimeLog.id).label('work_sessions'),
+        db.func.sum(duration_days).label('total_days')
+    ).select_from(Order)\
+     .join(TimeLog, Order.id == TimeLog.order_id)\
+     .join(ProductionStage, TimeLog.stage_id == ProductionStage.id)\
+     .filter(TimeLog.status == 'completed')
+    
+    if order_id:
+        query = query.filter(Order.id == order_id)
+    if system:
+        query = query.filter(Order.system == system)
+    if handle_style:
+        query = query.filter(Order.handle_style == handle_style)
+    if welding_frames_min:
+        query = query.filter(Order.welding_frames_qty >= welding_frames_min)
+    if glazing_frames_min:
+        query = query.filter(Order.glazing_frames_qty >= glazing_frames_min)
+    if szpros_complication:
+        query = query.filter(Order.szpros_complication == szpros_complication)
+    
+    query = query.group_by(Order.id, ProductionStage.id)
+    results = query.all()
+    
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Czasy zleceń"
+    
+    # Add headers
+    headers = ['Zlecenie', 'Opis', 'System', 'Klamka', 'Ramy spaw.', 'Ramy szkl.', 
+               'Szprosy', 'Etap', 'Liczba sesji', 'Całkowity czas (min)', 'Całkowity czas (godz)']
+    ws.append(headers)
+    
+    # Add data
+    for row in results:
+        total_minutes = (row.total_days * 24 * 60) if row.total_days else 0
+        ws.append([
+            row.order_number,
+            row.description or '',
+            row.system or '',
+            row.handle_style or '',
+            row.welding_frames_qty or '',
+            row.glazing_frames_qty or '',
+            row.szpros_complication or '',
+            row.stage_name,
+            row.work_sessions,
+            round(total_minutes, 2),
+            round(total_minutes / 60, 2)
+        ])
+    
+    # Save to bytes
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'raport_czasy_zlecen_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    )
+
+
+@app.route('/api/reports/worker-productivity/export')
+@role_required('admin', 'manager')
+def export_worker_productivity_report():
+    """Export worker productivity report to XLSX file"""
+    # Calculate duration in days (SQLite Julian day difference)
+    duration_days = db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
+    
+    results = db.session.query(
+        TimeLog.worker_name,
+        db.func.count(TimeLog.id).label('work_sessions'),
+        db.func.sum(duration_days).label('total_days')
+    ).filter(TimeLog.status == 'completed')\
+     .group_by(TimeLog.worker_name).all()
+    
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Wydajność pracowników"
+    
+    # Add headers
+    headers = ['Pracownik', 'Liczba sesji', 'Całkowity czas (min)', 'Całkowity czas (godz)']
+    ws.append(headers)
+    
+    # Add data
+    for row in results:
+        total_minutes = (row.total_days * 24 * 60) if row.total_days else 0
+        ws.append([
+            row.worker_name,
+            row.work_sessions,
+            round(total_minutes, 2),
+            round(total_minutes / 60, 2)
+        ])
+    
+    # Save to bytes
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'raport_wydajnosc_pracownikow_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    )
+
+
+@app.route('/api/reports/stage-efficiency/export')
+@role_required('admin', 'manager')
+def export_stage_efficiency_report():
+    """Export stage efficiency report to XLSX file"""
+    # Calculate duration in days (SQLite Julian day difference)
+    duration_days = db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
+    
+    results = db.session.query(
+        ProductionStage.name,
+        db.func.count(TimeLog.id).label('work_sessions'),
+        db.func.avg(duration_days).label('avg_days'),
+        db.func.sum(duration_days).label('total_days')
+    ).select_from(ProductionStage)\
+     .join(TimeLog, TimeLog.stage_id == ProductionStage.id)\
+     .filter(TimeLog.status == 'completed')\
+     .group_by(ProductionStage.id).all()
+    
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Efektywność etapów"
+    
+    # Add headers
+    headers = ['Etap', 'Liczba sesji', 'Średni czas (min)', 'Średni czas (godz)', 
+               'Całkowity czas (min)', 'Całkowity czas (godz)']
+    ws.append(headers)
+    
+    # Add data
+    for row in results:
+        avg_minutes = (row.avg_days * 24 * 60) if row.avg_days else 0
+        total_minutes = (row.total_days * 24 * 60) if row.total_days else 0
+        ws.append([
+            row.name,
+            row.work_sessions,
+            round(avg_minutes, 2),
+            round(avg_minutes / 60, 2),
+            round(total_minutes, 2),
+            round(total_minutes / 60, 2)
+        ])
+    
+    # Save to bytes
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'raport_efektywnosc_etapow_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    )
 
 
 # ========== Production Stage Management ==========

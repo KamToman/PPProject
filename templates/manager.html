@@ -91,7 +91,10 @@
                 </div>
             </div>
             
-            <button class="btn btn-primary" onclick="loadOrderTimesReport()">Wczytaj raport</button>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="loadOrderTimesReport()">Wczytaj raport</button>
+                <button class="btn btn-success" onclick="exportOrderTimesReport()">📥 Eksport do Excel</button>
+            </div>
         </div>
         
         <div id="orderTimesReport"></div>
@@ -101,7 +104,10 @@
 <div id="worker-productivity" class="tab-content">
     <div class="card">
         <h3>Raport wydajności pracowników</h3>
-        <button class="btn btn-primary" onclick="loadWorkerProductivityReport()">Wczytaj raport</button>
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="loadWorkerProductivityReport()">Wczytaj raport</button>
+            <button class="btn btn-success" onclick="exportWorkerProductivityReport()">📥 Eksport do Excel</button>
+        </div>
         
         <div id="workerProductivityReport"></div>
     </div>
@@ -110,7 +116,10 @@
 <div id="stage-efficiency" class="tab-content">
     <div class="card">
         <h3>Raport efektywności etapów produkcji</h3>
-        <button class="btn btn-primary" onclick="loadStageEfficiencyReport()">Wczytaj raport</button>
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="loadStageEfficiencyReport()">Wczytaj raport</button>
+            <button class="btn btn-success" onclick="exportStageEfficiencyReport()">📥 Eksport do Excel</button>
+        </div>
         
         <div id="stageEfficiencyReport"></div>
     </div>
@@ -139,6 +148,26 @@
 
 .filters-grid .form-group {
     margin-bottom: 0;
+}
+
+.button-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-success:hover {
+    background-color: #218838;
 }
 </style>
 
@@ -324,6 +353,35 @@ async function loadStageEfficiencyReport() {
         document.getElementById('stageEfficiencyReport').innerHTML = 
             '<p class="error">Błąd podczas ładowania raportu</p>';
     }
+}
+
+// Export functions
+function exportOrderTimesReport() {
+    const orderId = document.getElementById('orderFilter').value;
+    const system = document.getElementById('systemFilter').value;
+    const handleStyle = document.getElementById('handleStyleFilter').value;
+    const weldingFrames = document.getElementById('weldingFramesFilter').value;
+    const glazingFrames = document.getElementById('glazingFramesFilter').value;
+    const szpros = document.getElementById('szprosFilter').value;
+    
+    const params = new URLSearchParams();
+    if (orderId) params.append('order_id', orderId);
+    if (system) params.append('system', system);
+    if (handleStyle) params.append('handle_style', handleStyle);
+    if (weldingFrames) params.append('welding_frames_min', weldingFrames);
+    if (glazingFrames) params.append('glazing_frames_min', glazingFrames);
+    if (szpros) params.append('szpros_complication', szpros);
+    
+    const url = `/api/reports/order-times/export${params.toString() ? '?' + params.toString() : ''}`;
+    window.location.href = url;
+}
+
+function exportWorkerProductivityReport() {
+    window.location.href = '/api/reports/worker-productivity/export';
+}
+
+function exportStageEfficiencyReport() {
+    window.location.href = '/api/reports/stage-efficiency/export';
 }
 
 // Load initial report on page load
