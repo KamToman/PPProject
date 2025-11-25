@@ -101,20 +101,40 @@
 
 <div class="card">
     <h2>Zarządzanie procesami produkcji</h2>
+    
+    <!-- Add new stage form -->
+    <form id="stageForm" style="margin-bottom: 1.5rem; padding: 1rem; background-color: #f8f9fa; border-radius: 5px;">
+        <h3 style="margin-top: 0;">Dodaj nowy proces</h3>
+        <div class="form-group">
+            <label for="stageName">Nazwa procesu:</label>
+            <input type="text" id="stageName" name="stageName" required placeholder="np. Spawanie, Lakierowanie...">
+        </div>
+        <div class="form-group">
+            <label for="stageDescription">Opis (opcjonalnie):</label>
+            <input type="text" id="stageDescription" name="stageDescription" placeholder="Krótki opis procesu">
+        </div>
+        <button type="submit" class="btn btn-primary">Dodaj proces</button>
+    </form>
+    
     <table class="table">
         <thead>
             <tr>
                 <th>Nazwa procesu</th>
                 <th>Opis</th>
                 <th>Liczba przypisanych pracowników</th>
+                <th>Akcje</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="stagesTableBody">
             {% for stage in stages %}
-            <tr>
-                <td>{{ stage.name }}</td>
-                <td>{{ stage.description }}</td>
+            <tr id="stage-row-{{ stage.id }}">
+                <td id="stage-name-{{ stage.id }}">{{ stage.name }}</td>
+                <td id="stage-desc-{{ stage.id }}">{{ stage.description or '-' }}</td>
                 <td>{{ stage.assigned_users.count() }}</td>
+                <td>
+                    <button class="btn btn-small" data-stage-id="{{ stage.id }}" data-stage-name="{{ stage.name }}" data-stage-desc="{{ stage.description or '' }}" onclick="editStageFromData(this)">Edytuj</button>
+                    <button class="btn btn-small btn-danger" data-stage-id="{{ stage.id }}" data-stage-name="{{ stage.name }}" onclick="deleteStageFromData(this)">Usuń</button>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -208,6 +228,118 @@ async function deleteUser(userId) {
 function editUser(userId) {
     // Simplified edit - in production you'd have a modal or edit page
     alert('Funkcja edycji użytkownika - w przygotowaniu. Możesz usunąć użytkownika i dodać go ponownie z nowymi ustawieniami.');
+}
+
+// ========== Stage Management Functions ==========
+
+// Submit form to create stage
+document.getElementById('stageForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const name = document.getElementById('stageName').value.trim();
+    const description = document.getElementById('stageDescription').value.trim();
+    
+    if (!name) {
+        showMessage('Nazwa procesu nie może być pusta', 'error');
+        return;
+    }
+    
+    const data = { name, description };
+    
+    try {
+        const response = await fetch('/api/stages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showMessage('Proces został dodany pomyślnie!', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showMessage(result.error || 'Błąd podczas dodawania procesu', 'error');
+        }
+    } catch (error) {
+        showMessage('Błąd komunikacji z serwerem', 'error');
+    }
+});
+
+// Helper to get data from button attributes
+function editStageFromData(button) {
+    const stageId = button.dataset.stageId;
+    const currentName = button.dataset.stageName;
+    const currentDescription = button.dataset.stageDesc;
+    editStage(stageId, currentName, currentDescription);
+}
+
+function deleteStageFromData(button) {
+    const stageId = button.dataset.stageId;
+    const stageName = button.dataset.stageName;
+    deleteStage(stageId, stageName);
+}
+
+async function editStage(stageId, currentName, currentDescription) {
+    const newName = prompt('Nowa nazwa procesu:', currentName);
+    if (newName === null) return; // User cancelled
+    
+    if (!newName.trim()) {
+        showMessage('Nazwa procesu nie może być pusta', 'error');
+        return;
+    }
+    
+    const newDescription = prompt('Nowy opis procesu (pozostaw puste aby usunąć):', currentDescription);
+    if (newDescription === null) return; // User cancelled
+    
+    try {
+        const response = await fetch(`/api/stages/${stageId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: newName.trim(),
+                description: newDescription.trim()
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showMessage('Proces został zaktualizowany', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showMessage(result.error || 'Błąd podczas aktualizacji procesu', 'error');
+        }
+    } catch (error) {
+        showMessage('Błąd komunikacji z serwerem', 'error');
+    }
+}
+
+async function deleteStage(stageId, stageName) {
+    if (!confirm(`Czy na pewno chcesz usunąć proces "${stageName}"?\n\nUWAGA: Proces z powiązanymi wpisami czasowymi nie może zostać usunięty.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/stages/${stageId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showMessage('Proces został usunięty', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showMessage(result.error || 'Błąd podczas usuwania procesu', 'error');
+        }
+    } catch (error) {
+        showMessage('Błąd komunikacji z serwerem', 'error');
+    }
 }
 </script>
 
