@@ -557,9 +557,17 @@ def manage_stage(stage_id):
     elif request.method == 'PUT':
         data = request.json
         if 'name' in data:
-            stage.name = data['name']
+            name = data['name'].strip() if data['name'] else ''
+            if not name:
+                return jsonify({'error': 'Nazwa procesu nie może być pusta'}), 400
+            if len(name) > 100:
+                return jsonify({'error': 'Nazwa procesu może mieć maksymalnie 100 znaków'}), 400
+            stage.name = name
         if 'description' in data:
-            stage.description = data['description']
+            description = data['description'].strip() if data['description'] else ''
+            if len(description) > 500:
+                return jsonify({'error': 'Opis może mieć maksymalnie 500 znaków'}), 400
+            stage.description = description
         
         db.session.commit()
         
