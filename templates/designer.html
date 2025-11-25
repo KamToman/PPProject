@@ -18,6 +18,56 @@
             <textarea id="description" name="description" rows="3"></textarea>
         </div>
         
+        <h3>Dane projektu</h3>
+        
+        <div class="form-group">
+            <label for="system">System:</label>
+            <select id="system" name="system">
+                <option value="">-- Wybierz system --</option>
+                <option value="SLIM">SLIM</option>
+                <option value="JENSEN">JENSEN</option>
+                <option value="LITE">LITE</option>
+                <option value="OTTOSTUM">OTTOSTUM</option>
+                <option value="RPTECHNIK">RPTECHNIK</option>
+                <option value="W10">W10</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="handleStyle">Styl klamki:</label>
+            <select id="handleStyle" name="handleStyle">
+                <option value="">-- Wybierz styl --</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="kaseta">kaseta</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="weldingFramesQty">Ilość ram spawanych (1-15):</label>
+            <input type="number" id="weldingFramesQty" name="weldingFramesQty" min="1" max="15">
+        </div>
+        
+        <div class="form-group">
+            <label for="glazingFramesQty">Ilość ram szklonych (1-15):</label>
+            <input type="number" id="glazingFramesQty" name="glazingFramesQty" min="1" max="15">
+        </div>
+        
+        <div class="form-group">
+            <label for="szprosComplication">Złożoność szprosów (1-5):</label>
+            <select id="szprosComplication" name="szprosComplication">
+                <option value="">-- Wybierz poziom --</option>
+                <option value="1">1 - Bardzo niska</option>
+                <option value="2">2 - Niska</option>
+                <option value="3">3 - Średnia</option>
+                <option value="4">4 - Wysoka</option>
+                <option value="5">5 - Bardzo wysoka</option>
+            </select>
+        </div>
+        
         <button type="submit" class="btn btn-primary">Utwórz zlecenie</button>
     </form>
     
@@ -33,6 +83,11 @@
                 <tr>
                     <th>Numer zlecenia</th>
                     <th>Opis</th>
+                    <th>System</th>
+                    <th>Styl klamki</th>
+                    <th>Ramy spaw.</th>
+                    <th>Ramy szkl.</th>
+                    <th>Szprosy</th>
                     <th>Data utworzenia</th>
                     <th>Akcje</th>
                 </tr>
@@ -42,6 +97,11 @@
                 <tr>
                     <td>{{ order.order_number }}</td>
                     <td>{{ order.description }}</td>
+                    <td>{{ order.system or '-' }}</td>
+                    <td>{{ order.handle_style or '-' }}</td>
+                    <td>{{ order.welding_frames_qty or '-' }}</td>
+                    <td>{{ order.glazing_frames_qty or '-' }}</td>
+                    <td>{{ order.szpros_complication or '-' }}</td>
                     <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>
                         <a href="{{ url_for('generate_qr_code', order_id=order.id) }}" 
@@ -75,6 +135,23 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
     
     const orderNumber = document.getElementById('orderNumber').value;
     const description = document.getElementById('description').value;
+    const system = document.getElementById('system').value;
+    const handleStyle = document.getElementById('handleStyle').value;
+    const weldingFramesQty = document.getElementById('weldingFramesQty').value;
+    const glazingFramesQty = document.getElementById('glazingFramesQty').value;
+    const szprosComplication = document.getElementById('szprosComplication').value;
+    
+    const orderData = {
+        order_number: orderNumber,
+        description: description
+    };
+    
+    // Add optional fields if they have values
+    if (system) orderData.system = system;
+    if (handleStyle) orderData.handle_style = handleStyle;
+    if (weldingFramesQty) orderData.welding_frames_qty = parseInt(weldingFramesQty);
+    if (glazingFramesQty) orderData.glazing_frames_qty = parseInt(glazingFramesQty);
+    if (szprosComplication) orderData.szpros_complication = parseInt(szprosComplication);
     
     try {
         const response = await fetch('/api/orders', {
@@ -82,10 +159,7 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                order_number: orderNumber,
-                description: description
-            })
+            body: JSON.stringify(orderData)
         });
         
         const data = await response.json();

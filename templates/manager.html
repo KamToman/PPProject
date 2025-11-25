@@ -18,14 +18,79 @@
 <div id="order-times" class="tab-content active">
     <div class="card">
         <h3>Raport czasów zleceń</h3>
-        <div class="form-group">
-            <label for="orderFilter">Filtruj według zlecenia:</label>
-            <select id="orderFilter">
-                <option value="">Wszystkie zlecenia</option>
-                {% for order in orders %}
-                <option value="{{ order.id }}">{{ order.order_number }} - {{ order.description }}</option>
-                {% endfor %}
-            </select>
+        
+        <div class="filters-section">
+            <h4>Filtry</h4>
+            <div class="filters-grid">
+                <div class="form-group">
+                    <label for="orderFilter">Zlecenie:</label>
+                    <select id="orderFilter">
+                        <option value="">Wszystkie zlecenia</option>
+                        {% for order in orders %}
+                        <option value="{{ order.id }}">{{ order.order_number }} - {{ order.description }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="systemFilter">System:</label>
+                    <select id="systemFilter">
+                        <option value="">Wszystkie systemy</option>
+                        <option value="SLIM">SLIM</option>
+                        <option value="JENSEN">JENSEN</option>
+                        <option value="LITE">LITE</option>
+                        <option value="OTTOSTUM">OTTOSTUM</option>
+                        <option value="RPTECHNIK">RPTECHNIK</option>
+                        <option value="W10">W10</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="handleStyleFilter">Styl klamki:</label>
+                    <select id="handleStyleFilter">
+                        <option value="">Wszystkie style</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="kaseta">kaseta</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="weldingFramesFilter">Ramy spawane (min):</label>
+                    <select id="weldingFramesFilter">
+                        <option value="">Wszystkie</option>
+                        {% for i in range(1, 16) %}
+                        <option value="{{ i }}">{{ i }}+</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="glazingFramesFilter">Ramy szklone (min):</label>
+                    <select id="glazingFramesFilter">
+                        <option value="">Wszystkie</option>
+                        {% for i in range(1, 16) %}
+                        <option value="{{ i }}">{{ i }}+</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="szprosFilter">Złożoność szprosów:</label>
+                    <select id="szprosFilter">
+                        <option value="">Wszystkie poziomy</option>
+                        <option value="1">1 - Bardzo niska</option>
+                        <option value="2">2 - Niska</option>
+                        <option value="3">3 - Średnia</option>
+                        <option value="4">4 - Wysoka</option>
+                        <option value="5">5 - Bardzo wysoka</option>
+                    </select>
+                </div>
+            </div>
+            
             <button class="btn btn-primary" onclick="loadOrderTimesReport()">Wczytaj raport</button>
         </div>
         
@@ -51,6 +116,32 @@
     </div>
 </div>
 
+<style>
+.filters-section {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.filters-section h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #495057;
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.filters-grid .form-group {
+    margin-bottom: 0;
+}
+</style>
+
 <script>
 function showTab(tabName, event) {
     // Hide all tabs
@@ -70,7 +161,21 @@ function showTab(tabName, event) {
 
 async function loadOrderTimesReport() {
     const orderId = document.getElementById('orderFilter').value;
-    const url = orderId ? `/api/reports/order-times?order_id=${orderId}` : '/api/reports/order-times';
+    const system = document.getElementById('systemFilter').value;
+    const handleStyle = document.getElementById('handleStyleFilter').value;
+    const weldingFrames = document.getElementById('weldingFramesFilter').value;
+    const glazingFrames = document.getElementById('glazingFramesFilter').value;
+    const szpros = document.getElementById('szprosFilter').value;
+    
+    const params = new URLSearchParams();
+    if (orderId) params.append('order_id', orderId);
+    if (system) params.append('system', system);
+    if (handleStyle) params.append('handle_style', handleStyle);
+    if (weldingFrames) params.append('welding_frames_min', weldingFrames);
+    if (glazingFrames) params.append('glazing_frames_min', glazingFrames);
+    if (szpros) params.append('szpros_complication', szpros);
+    
+    const url = `/api/reports/order-times${params.toString() ? '?' + params.toString() : ''}`;
     
     try {
         const response = await fetch(url);
@@ -89,6 +194,11 @@ async function loadOrderTimesReport() {
                     <tr>
                         <th>Zlecenie</th>
                         <th>Opis</th>
+                        <th>System</th>
+                        <th>Klamka</th>
+                        <th>Ramy spaw.</th>
+                        <th>Ramy szkl.</th>
+                        <th>Szprosy</th>
                         <th>Etap</th>
                         <th>Liczba sesji</th>
                         <th>Całkowity czas (min)</th>
@@ -103,6 +213,11 @@ async function loadOrderTimesReport() {
                 <tr>
                     <td>${row.order_number}</td>
                     <td>${row.description || '-'}</td>
+                    <td>${row.system || '-'}</td>
+                    <td>${row.handle_style || '-'}</td>
+                    <td>${row.welding_frames_qty || '-'}</td>
+                    <td>${row.glazing_frames_qty || '-'}</td>
+                    <td>${row.szpros_complication || '-'}</td>
                     <td>${row.stage_name}</td>
                     <td>${row.work_sessions}</td>
                     <td>${row.total_minutes}</td>

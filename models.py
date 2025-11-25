@@ -35,6 +35,12 @@ class Order(db.Model):
     order_number = db.Column(db.String(100), unique=True, nullable=False)
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Project data fields for designer
+    system = db.Column(db.String(20))  # SLIM, JENSEN, LITE, OTTOSTUM, RPTECHNIK, W10
+    handle_style = db.Column(db.String(10))  # 1, 2, 3, 4, 5, kaseta
+    welding_frames_qty = db.Column(db.Integer)  # 1-15
+    glazing_frames_qty = db.Column(db.Integer)  # 1-15
+    szpros_complication = db.Column(db.Integer)  # 1-5
     time_logs = db.relationship('TimeLog', backref='order', lazy=True, cascade='all, delete-orphan')
 
 class ProductionStage(db.Model):

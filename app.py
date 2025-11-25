@@ -224,15 +224,55 @@ def create_order():
     order_number = data.get('order_number')
     description = data.get('description', '')
     
+    # New project data fields
+    system = data.get('system')
+    handle_style = data.get('handle_style')
+    welding_frames_qty = data.get('welding_frames_qty')
+    glazing_frames_qty = data.get('glazing_frames_qty')
+    szpros_complication = data.get('szpros_complication')
+    
     if not order_number:
         return jsonify({'error': 'Order number is required'}), 400
+    
+    # Validate system value
+    valid_systems = ['SLIM', 'JENSEN', 'LITE', 'OTTOSTUM', 'RPTECHNIK', 'W10']
+    if system and system not in valid_systems:
+        return jsonify({'error': f'Invalid system. Must be one of: {", ".join(valid_systems)}'}), 400
+    
+    # Validate handle_style value
+    valid_handle_styles = ['1', '2', '3', '4', '5', 'kaseta']
+    if handle_style and handle_style not in valid_handle_styles:
+        return jsonify({'error': f'Invalid handle style. Must be one of: {", ".join(valid_handle_styles)}'}), 400
+    
+    # Validate welding_frames_qty (1-15)
+    if welding_frames_qty is not None:
+        if not isinstance(welding_frames_qty, int) or welding_frames_qty < 1 or welding_frames_qty > 15:
+            return jsonify({'error': 'Welding frames quantity must be between 1 and 15'}), 400
+    
+    # Validate glazing_frames_qty (1-15)
+    if glazing_frames_qty is not None:
+        if not isinstance(glazing_frames_qty, int) or glazing_frames_qty < 1 or glazing_frames_qty > 15:
+            return jsonify({'error': 'Glazing frames quantity must be between 1 and 15'}), 400
+    
+    # Validate szpros_complication (1-5)
+    if szpros_complication is not None:
+        if not isinstance(szpros_complication, int) or szpros_complication < 1 or szpros_complication > 5:
+            return jsonify({'error': 'Szpros complication must be between 1 and 5'}), 400
     
     # Check if order already exists
     existing_order = Order.query.filter_by(order_number=order_number).first()
     if existing_order:
         return jsonify({'error': 'Order number already exists'}), 400
     
-    order = Order(order_number=order_number, description=description)
+    order = Order(
+        order_number=order_number,
+        description=description,
+        system=system,
+        handle_style=handle_style,
+        welding_frames_qty=welding_frames_qty,
+        glazing_frames_qty=glazing_frames_qty,
+        szpros_complication=szpros_complication
+    )
     db.session.add(order)
     db.session.commit()
     
@@ -240,6 +280,11 @@ def create_order():
         'id': order.id,
         'order_number': order.order_number,
         'description': order.description,
+        'system': order.system,
+        'handle_style': order.handle_style,
+        'welding_frames_qty': order.welding_frames_qty,
+        'glazing_frames_qty': order.glazing_frames_qty,
+        'szpros_complication': order.szpros_complication,
         'created_at': order.created_at.isoformat()
     }), 201
 
@@ -414,6 +459,11 @@ def manager_panel():
 def get_order_times_report():
     """Get time report for all orders"""
     order_id = request.args.get('order_id', type=int)
+    system = request.args.get('system')
+    handle_style = request.args.get('handle_style')
+    welding_frames_min = request.args.get('welding_frames_min', type=int)
+    glazing_frames_min = request.args.get('glazing_frames_min', type=int)
+    szpros_complication = request.args.get('szpros_complication', type=int)
     
     # Calculate duration in days (SQLite Julian day difference)
     duration_days = db.func.julianday(TimeLog.end_time) - db.func.julianday(TimeLog.start_time)
@@ -421,6 +471,11 @@ def get_order_times_report():
     query = db.session.query(
         Order.order_number,
         Order.description,
+        Order.system,
+        Order.handle_style,
+        Order.welding_frames_qty,
+        Order.glazing_frames_qty,
+        Order.szpros_complication,
         ProductionStage.name.label('stage_name'),
         db.func.count(TimeLog.id).label('work_sessions'),
         db.func.sum(duration_days).label('total_days')
@@ -431,6 +486,16 @@ def get_order_times_report():
     
     if order_id:
         query = query.filter(Order.id == order_id)
+    if system:
+        query = query.filter(Order.system == system)
+    if handle_style:
+        query = query.filter(Order.handle_style == handle_style)
+    if welding_frames_min:
+        query = query.filter(Order.welding_frames_qty >= welding_frames_min)
+    if glazing_frames_min:
+        query = query.filter(Order.glazing_frames_qty >= glazing_frames_min)
+    if szpros_complication:
+        query = query.filter(Order.szpros_complication == szpros_complication)
     
     query = query.group_by(Order.id, ProductionStage.id)
     
@@ -442,6 +507,11 @@ def get_order_times_report():
         report_data.append({
             'order_number': row.order_number,
             'description': row.description,
+            'system': row.system,
+            'handle_style': row.handle_style,
+            'welding_frames_qty': row.welding_frames_qty,
+            'glazing_frames_qty': row.glazing_frames_qty,
+            'szpros_complication': row.szpros_complication,
             'stage_name': row.stage_name,
             'work_sessions': row.work_sessions,
             'total_minutes': round(total_minutes, 2),
